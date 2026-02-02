@@ -62,13 +62,13 @@ class Product(models.Model):
         ('out_of_stock', 'Out Of Stock')
     ]
     
-    categories = models.ForeignKey(Category, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, blank=True)
     slug = models.SlugField(unique=True)
     description = models.TextField()
     price = models.DecimalField(decimal_places=2, max_digits=7)
     discount = models.DecimalField(decimal_places=2, max_digits=7)
-    stock = models.DecimalField(decimal_places=2, max_digits=7)
+    stock = models.PositiveIntegerField(default=0)
     image = models.ImageField(upload_to='product/', blank=True)
     status = models.CharField(choices=STATUS_CHOICE, default='draft')
     created_at = models.DateTimeField(auto_now_add=True)
