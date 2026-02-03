@@ -33,6 +33,29 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
     
+    
+class LoginSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+    
+    
+class UserProfileSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(read_only=True)
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'first_name', 'last_name',
+            'full_name', 'phone', 'avatar'
+        ]
+        
+        
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'first_name', 'last_name', 'phone', 'avatar'
+        ]
 
 # cart items for reading
 class CartItemReadSerializer(serializers.ModelSerializer):
@@ -44,6 +67,19 @@ class CartItemReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ['id', 'product','product_name', 'product_image', 'unit_price', 'items_total', ]
+        
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=6)
+    confirm_password = serializers.CharField(write_only=True, min_length=6)
+    
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({
+                'confirm_new_password': 'New passwords do not match.'
+            })
+        return data
         
 
 # cart for readings

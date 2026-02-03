@@ -5,24 +5,26 @@ from django.db import models
 from django.utils.text import slugify
 import uuid
 
-GENDER_CHOICES = [
-    ("M", "Male"),
-    ("F", "Female"),
-    ("T", "Other"),
-]
+class Gender(models.TextChoices):
+    MALE = "M", "Male"
+    FEMALE = "F", "Female"
+    OTHER = "T", "Other"
 
 def validated_age(value):
     today = date.today()
+    
+    if value > today:
+        raise ValidationError("Date of birth cannot be in the future.")
+    
     age = today.year - value.year - (
         (today.month, today.day) < (value.month, value.day)
     )
     if age < 16:
         raise ValidationError("User must me above 16.")
 
-
 class User(AbstractUser):
-    gender = models.CharField(max_length=10, default='Male', choices=GENDER_CHOICES)
-    dob = models.DateField(validators=[validated_age])
+    gender = models.CharField(max_length=10, choices=Gender.choices, default=Gender.MALE)
+    dob = models.DateField(validators=[validated_age], null=True)
     profile_pic = models.ImageField(upload_to='avatar/', null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     
@@ -124,9 +126,12 @@ class CartItem(models.Model):
     def __str__(self):
         return f"{self.quantity}X{self.product.name}"
     
+    @property
     def items_total(self):
         return self.product.discounted_price * self.quantity
-
+    
+    class Meta:
+        unique_together = ['cart', 'product']
 
 class Address(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='address')
