@@ -1,3 +1,5 @@
+from itertools import product
+
 from rest_framework import serializers
 from .models import *
 from rest_framework.exceptions import ValidationError
@@ -105,12 +107,33 @@ class AddToCartSerializer(serializers.Serializer):
                 "Product not found or not available."
             )
         return value
-    
 
-class UpdateToCartSerializer(serializers.Serializer):
+
+class UpdateToCartSerializer(serializers.ModelSerializer):
     quantity = serializers.IntegerField(min_value=1)
     
+    class Meta:
+        model = CartItem
+        fields = ['quantity']
     
+    # 'self.instance' is the CartItem being updated
+    def validate(self, data):
+        instance = self.instance
+        
+        if instance is None:
+            return data
+        
+        product = instance.product
+        quantity = data.get("quantity")
+        
+        if quantity > product.stock:
+            raise serializers.ValidationError({
+                "quantity": f"Only {product.stock} units available."
+            })
+        
+        return data
+
+
 class CategorySerializer(serializers.ModelSerializer):
     product_count = serializers.SerializerMethodField()
     

@@ -1,14 +1,19 @@
-
+from rest_framework.mixins import DestroyModelMixin
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
+from rest_framework.viewsets import ViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from .serializers import *
 from rest_framework import status
 from .models import *
 from rest_framework.generics import CreateAPIView, GenericAPIView, RetrieveAPIView, RetrieveUpdateAPIView, \
-    get_object_or_404
+    get_object_or_404, DestroyAPIView
 from rest_framework.permissions import AllowAny,IsAuthenticated
+from django.db import transaction
+from rest_framework.decorators import action
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 
 class RegisterView(CreateAPIView):
@@ -45,7 +50,7 @@ class LoginView(CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
@@ -116,61 +121,80 @@ class ProfileUpdateView(RetrieveUpdateAPIView):
         return self.request.user
     
 
-class CartView(GenericAPIView):
+class CartView(ViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = CartReadSerializer
     
     def get_object(self):
-        cart = Cart.objects.get(user=self.request.user)
-        return cart
-    
-    def get(self, request):
-        cart = self.get_object()
-        serializer = self.get_serializer(cart)
-        return Response(serializer.data)
+        cart,_ = Cart.objects.get_or_create(user=self.request.user)
+        return Cart.objects.prefetch_related("items__product").get(id=cart.id)
     
 
 class AddToCartView(APIView):
     permission_classes = [IsAuthenticated]
     
+    @transaction.atomic
     def post(self, request):
         serializer = AddToCartSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
         
-        product_id = serializers.validate_data['product_id']
-        quantity = serializers.validate_data['quantity']
+        # Fetch product and cart
+        product = Product.objects.select_for_update().get(
+            id=serializer.validated_data["product_id"]
+        )
+        quantity = serializer.validated_data["quantity"]
+        cart, _ = Cart.objects.get_or_create(
+            user=request.user
+        )
         
-        product = Product.objects.get(id=product_id)
-        
-        if product.stock < quantity:
-            return Response(
-                {'error': f"Only {product.stock} are available only."},
-                status = status.HTTP_400_BAD_REQUEST
-            )
-        cart, _ = Cart.objects.get_or_create(request.user)
-        
+        # Get or update the CartItem
         cart_item, created = CartItem.objects.select_for_update().get_or_create(
             cart=cart,
             product=product,
-            defaults={'quantity':quantity}
+            defaults={'quantity':0}
         )
         
-        if not created:
-            new_qty = cart_item + quantity
-            
-            if new_qty > product.stock:
-                return Response(
-                    {'error': f"Only {product.stock} items available."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            cart_item.quantity = new_qty
-            cart_item.save()
-    
-        cart_serializer = CartReadSerializer(cart)
+        # calculate total potential quantity
+        if created:
+            total_requested_qty = quantity
+        else:
+            total_requested_qty = cart_item.quantity + quantity
+        
+        # Stock validation
+        if total_requested_qty > product.stock:
+            raise ValidationError(f"Only {product.stock} items available. You already have {cart_item.quantity} in cart.")
+        
+        # save
+        cart_item.quantity = total_requested_qty
+        cart_item.save()
+        
         return Response({
-            'message': f"Added {quantity} x {product.name} to cart.",
-            'cart': cart_serializer.data
-        }, status = status.HTTP_201_CREATED)
+            'message': 'Item added to cart.'
+        }, status=status.HTTP_201_CREATED)
+    
 
+class UpdateCartItemView(RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UpdateToCartSerializer
+    
+    def get_queryset(self):
+        return CartItem.objects.filter(cart__user=self.request.user)
+    
+
+class ClearCartView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @transaction.atomic
+    def delete(self,request):
+        delete_count, _ = CartItem.objects.filter(
+            cart__user=request.user
+        ).delete()
+        
+        return Response(
+            {
+                'message':f"{delete_count} item(s)",
+                "cleared":True
+            },
+            status=status.HTTP_200_OK
+        )
     
