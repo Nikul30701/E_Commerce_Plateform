@@ -1,7 +1,7 @@
 from rest_framework.mixins import DestroyModelMixin
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
-from rest_framework.viewsets import ViewSet
+from rest_framework.viewsets import ViewSet, ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from .serializers import *
@@ -9,7 +9,7 @@ from rest_framework import status
 from .models import *
 from rest_framework.generics import CreateAPIView, GenericAPIView, RetrieveAPIView, RetrieveUpdateAPIView, \
     get_object_or_404, DestroyAPIView
-from rest_framework.permissions import AllowAny,IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from django.db import transaction
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
@@ -198,3 +198,50 @@ class ClearCartView(APIView):
             status=status.HTTP_200_OK
         )
     
+#  Category all List
+class CategoryListView(ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny]
+        return [IsAdminUser]
+    
+    
+# Product List
+class ProductViewSet(ModelViewSet):
+    queryset = Product.objects.select_related("category")
+    
+    def get_queryset(self):
+        if self.action in ["list", 'retrieve']:
+            return Product.objects.filter(
+                status='active'
+            ).select_related('category')
+        return Product.objects.select_related("category")
+    
+    filter_backends = [
+        DjangoFilterBackend,
+        OrderingFilter,
+        SearchFilter
+    ]
+    
+    filterset_fields  = ['category']
+    search_fields =[
+        'name',
+        'description',
+        'category__name'
+    ]
+    ordering_fields = ['price', '-created_at']
+    
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return ProductDetailSerializer
+        if self.action in ["list"]:
+            return ProductSerializer
+        return ProductCreateSerializer
+    
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [AllowAny]
+        return [IsAdminUser]
