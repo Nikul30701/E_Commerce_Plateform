@@ -62,17 +62,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'first_name', 'last_name', 'phone', 'avatar'
         ]
-
-# cart items for reading
-class CartItemReadSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(read_only=True, source='product.name')
-    product_image = serializers.ImageField(read_only=True, source='product.image')
-    unit_price = serializers.DecimalField(read_only=True, decimal_places=2, max_digits=10, source='product.discounted_price')
-    item_total = serializers.DecimalField(read_only=True, decimal_places=2, max_digits=10, source='items_total')
-    
-    class Meta:
-        model = CartItem
-        fields = ['id', 'product', 'product_name', 'product_image', 'unit_price', 'quantity', 'item_total']
         
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -85,8 +74,33 @@ class ChangePasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError({
                 'confirm_new_password': 'New passwords do not match.'
             })
-        return data
         
+        if data['old_password'] == data["new_password"]:
+            raise serializers.ValidationError({
+                'new_password': 'New password cannot be the same as the old password.'
+            })
+        
+        # Verify old password
+        user=self.context['request'].user
+        if not user.check_password(data['old_password']):
+            raise serializers.ValidationError({
+                'old_password': 'Current password is incorrect.'
+            })
+        return data
+
+
+# cart items for reading
+class CartItemReadSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(read_only=True, source='product.name')
+    product_image = serializers.ImageField(read_only=True, source='product.image')
+    unit_price = serializers.DecimalField(read_only=True, decimal_places=2, max_digits=10,
+                                          source='product.discounted_price')
+    item_total = serializers.DecimalField(read_only=True, decimal_places=2, max_digits=10, source='items_total')
+    
+    class Meta:
+        model = CartItem
+        fields = ['id', 'product', 'product_name', 'product_image', 'unit_price', 'quantity', 'item_total']
+
 
 # cart for readings
 class CartReadSerializer(serializers.ModelSerializer):

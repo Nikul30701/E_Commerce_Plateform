@@ -1,5 +1,5 @@
 from rest_framework.views import APIView
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, update_session_auth_hash
 from rest_framework.viewsets import ViewSet, ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
@@ -104,6 +104,30 @@ class LogoutView(GenericAPIView):
             {'message':'Logout out successful'},
             status=status.HTTP_200_OK
         )
+    
+
+class ChangePasswordView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
+    
+    @transaction.atomic
+    def post(self, request):
+        serializer = self.get_serializer(
+            data=request.data,
+            context={'request':request}
+        )
+        serializer.is_valid(raise_exception=True)
+        
+        user= request.user
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        
+#         keeps user logged in
+        update_session_auth_hash(request, user)
+        
+        return Response({
+            'message':'Password change successfully!'
+        }, status=status.HTTP_200_OK)
     
 
 #  User's Profile
