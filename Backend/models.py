@@ -147,23 +147,20 @@ class Address(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['-is_default', '-created_at']   # Default address shows first
+        ordering = ['-is_default', '-created_at']
+        verbose_name_plural = "Addresses"
 
     def __str__(self):
-        return f"{self.full_name}, {self.city}, {self.state}"
+        return f"{self.fullname}, {self.city}, {self.state}"
 
     def save(self, *args, **kwargs):
-        # If this address is set as default,
-        # remove "default" from all other addresses of this user
         if self.is_default:
             Address.objects.filter(user=self.user).exclude(pk=self.pk).update(is_default=False)
 
-        # If user has NO addresses yet, make this one default automatically
         if not self.pk and not Address.objects.filter(user=self.user).exists():
             self.is_default = True
 
         super().save(*args, **kwargs)
-
 
 
 class Order(models.Model):

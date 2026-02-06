@@ -1,5 +1,3 @@
-from itertools import product
-
 from rest_framework import serializers
 from .models import *
 from rest_framework.exceptions import ValidationError
@@ -15,12 +13,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'gender', 'dob', 'profile_pic', 'password', 'confirm_password']
         extra_kwargs = {
             'password': {'write_only': True, 'min_length': 6},
+            'email':{'required':True}
         }
     
     def validate(self,data):
         if data['password'] != data['confirm_password']:
             raise ValidationError({"password": "Passwords do not match"})
         return data
+    
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email already registered.")
+        return value
     
     def create(self, validated_data):
         validated_data.pop('confirm_password')
@@ -64,11 +68,11 @@ class CartItemReadSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(read_only=True, source='product.name')
     product_image = serializers.ImageField(read_only=True, source='product.image')
     unit_price = serializers.DecimalField(read_only=True, decimal_places=2, max_digits=10, source='product.discounted_price')
-    items_total = serializers.DecimalField(read_only=True, decimal_places=2, max_digits=10, source='items_total')
+    item_total = serializers.DecimalField(read_only=True, decimal_places=2, max_digits=10, source='items_total')
     
     class Meta:
         model = CartItem
-        fields = ['id', 'product','product_name', 'product_image', 'unit_price', 'items_total', ]
+        fields = ['id', 'product', 'product_name', 'product_image', 'unit_price', 'quantity', 'item_total']
         
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -100,12 +104,8 @@ class AddToCartSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(default=1, min_value=1)
     
     def validate_product_id(self, value):
-        try:
-            Product.objects.get(id=value, status='active')
-        except Product.DoesNotExist:
-            raise serializers.ValidationError(
-                "Product not found or not available."
-            )
+        if not Product.objects.filter(id=value, status='active').exists():
+            raise serializers.ValidationError("Product not found or available.")
         return value
 
 
@@ -119,23 +119,18 @@ class UpdateToCartSerializer(serializers.ModelSerializer):
     # 'self.instance' is the CartItem being updated
     def validate(self, data):
         instance = self.instance
-        
-        if instance is None:
+        if instance:
+            product = instance.product
+            quantity = data.get("quantity")
+            if quantity > product.stock:
+                raise serializers.ValidationError({
+                    'quantity': f"Only {product.stock} units available."
+                })
             return data
-        
-        product = instance.product
-        quantity = data.get("quantity")
-        
-        if quantity > product.stock:
-            raise serializers.ValidationError({
-                "quantity": f"Only {product.stock} units available."
-            })
-        
-        return data
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    product_count = serializers.SerializerMethodField()
+    product_count = serializers.IntegerField(source='product.count', read_only=True)
     
     class Meta:
         model = Category
@@ -179,11 +174,11 @@ class ProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'name', 'slug', 'category', 'price', 'discount','discounted_price', 'image',
-                  'is_in_stock', 'status' ]
+                  'is_in_stock','stock', 'description', 'status' ]
         
     def validate_price(self, value):
         if value < 0:
-            raise serializers.ValidationError("Price should not less than 0.")
+            raise serializers.ValidationError("Price cannot be negative.")
         return value
     
     def validate_stock(self, value):
@@ -193,7 +188,7 @@ class ProductCreateSerializer(serializers.ModelSerializer):
         
     def validate_discount(self, value):
         if value < 0 or value > 100:
-            raise serializers.ValidationError("discount should not less than 0 and not higher than 100")
+            raise serializers.ValidationError('Discount must be between 0 and 100.')
         return value
     
 
@@ -210,7 +205,7 @@ class AddressSerializer(serializers.ModelSerializer):
         return data
         
         
-class OrdersItemSerializer(serializers.ModelSerializer):
+class OrderItemSerializer(serializers.ModelSerializer):
     items_total = serializers.DecimalField(decimal_places=2, max_digits=7, read_only=True)
     
     class Meta:
@@ -224,14 +219,14 @@ class OrderListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'status', 'payment_status', 'total', 'item_count', 'create_at']
+        fields = ['id', 'order_number', 'status', 'payment_status', 'total', 'item_count', 'created_at']
         
     def get_item_count(self, obj):
-        return obj.item_count()
+        return obj.items.count()
         
     
 class OrderDetailSerializer(serializers.ModelSerializer):
-    items = OrdersItemSerializer(many=True, read_only=True)
+    items = OrderItemSerializer(many=True, read_only=True)
     shipped_address = serializers.SerializerMethodField()
     
     class Meta:
@@ -239,11 +234,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'order_number', 'shipped_address', 'status', 'payment_status', 'subtotal', 'tax', 'total',
                   'notes', 'created_at', 'updated_at']
     
-    def get_shipped_address(self, obj):
-        if obj.shipped_address:
-            addr = obj.shipped_address
+    def get_shipping_address(self, obj):
+        if obj.shipping_address:
+            addr = obj.shipping_address
             return {
-                'fullname': addr.full_name,
+                'fullname': addr.fullname,
                 'street': addr.street,
                 'city': addr.city,
                 'zipcode': addr.zipcode,

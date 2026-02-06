@@ -1,5 +1,3 @@
-from django.db.models.functions import Trunc
-from rest_framework.mixins import DestroyModelMixin
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework.viewsets import ViewSet, ModelViewSet, ReadOnlyModelViewSet
@@ -9,16 +7,17 @@ from .serializers import *
 from rest_framework import status
 from .models import *
 from rest_framework.generics import CreateAPIView, GenericAPIView, RetrieveAPIView, RetrieveUpdateAPIView, \
-    get_object_or_404, DestroyAPIView, ListAPIView
+    get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from django.db import transaction
-from rest_framework.decorators import action, permission_classes
+from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from decimal import Decimal
 from django.db.models import F
 
 
+# user registrations
 class RegisterView(CreateAPIView):
         serializer_class = RegisterSerializer
         permission_classes = [AllowAny]
@@ -106,7 +105,8 @@ class LogoutView(GenericAPIView):
             status=status.HTTP_200_OK
         )
     
-    
+
+#  User's Profile
 # GET /api/auth/profile/
 class ProfileView(RetrieveAPIView):
     permission_classes = [IsAuthenticated]
@@ -124,6 +124,7 @@ class ProfileUpdateView(RetrieveUpdateAPIView):
         return self.request.user
     
 
+# Cart
 class CartView(ViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = CartReadSerializer
@@ -142,7 +143,8 @@ class AddToCartView(APIView):
         serializer.is_valid(raise_exception=True)
         
         # Fetch product and cart
-        product = Product.objects.select_for_update().get(
+        product = get_object_or_404(
+            Product.objects.select_for_update(),
             id=serializer.validated_data["product_id"]
         )
         quantity = serializer.validated_data["quantity"]
@@ -158,14 +160,14 @@ class AddToCartView(APIView):
         )
         
         # calculate total potential quantity
-        if created:
-            total_requested_qty = quantity
-        else:
-            total_requested_qty = cart_item.quantity + quantity
+        current_qty = cart_item.quantity
+        total_requested_qty = current_qty + quantity
         
         # Stock validation
         if total_requested_qty > product.stock:
-            raise ValidationError(f"Only {product.stock} items available. You already have {cart_item.quantity} in cart.")
+            raise ValidationError(
+                f"Insufficient stock. You have {current_qty}, adding {quantity} exceeds limit of {product.stock}."
+            )
         
         # save
         cart_item.quantity = total_requested_qty
@@ -208,8 +210,8 @@ class CategoryListView(ModelViewSet):
     
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
-            return [AllowAny]
-        return [IsAdminUser]
+            return [AllowAny()]
+        return [IsAdminUser()]
     
     
 # Product List
@@ -246,8 +248,8 @@ class ProductViewSet(ModelViewSet):
     
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
-            return [AllowAny]
-        return [IsAdminUser]
+            return [AllowAny()]
+        return [IsAdminUser()]
     
     
 TAX_RATE = Decimal('0.10')
@@ -308,7 +310,6 @@ class CheckoutView(APIView):
             Decimal(item.item_total) for item in cart_items
         )
 
-        TAX_RATE = Decimal("0.18")
         tax = (subtotal * TAX_RATE).quantize(Decimal("0.01"))
         total = subtotal + tax
 
@@ -357,20 +358,8 @@ class CheckoutView(APIView):
             status=status.HTTP_201_CREATED
         )
     
-class MyOrdersView(ListAPIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = OrderListSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['status']
     
-    def get_queryset(self):
-        return Order.objects.filter(
-            user=self.request.user
-        ).select_related(
-            'shipping_address'
-        ).prefetch_related('item__product')
-    
-    
+# User's Order
 class OrderViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     
@@ -431,3 +420,49 @@ class OrderStatusUpdateView(RetrieveUpdateAPIView):
     def patch(self, request, *args, **kwargs):
         # You can add extra logic here if needed
         return super().patch(request, *args, **kwargs)
+    
+    
+# User Address
+class AddressViewSet(ModelViewSet):
+    serializer_class = AddressSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Address.objects.filter(user=self.request.user).order_by('-created_at')
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+        
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+        
+    def perform_destroy(self, instance):
+        was_default = instance.is_default
+        user =instance.user
+        instance.delete()
+        
+        if was_default:
+            new_default = Address.objects.filter(user=user).latest('-created_at').first()
+            if new_default:
+                new_default.is_default = True
+                new_default.save(update_fields=['is_default'])
+                
+    @action(detail=True, methods=['post'], url_path='set-default')
+    @transaction.atomic
+    def set_default(self, request, pk=None):
+        address = self.get_object()
+        
+        Address.objects.filter(
+            user=request.user,
+            is_default=True,
+        ).update(is_default=False)
+        
+        address.is_default = True
+        address.save(update_fields=['is_default'])
+        
+        serializer = self.get_serializer(address)
+        return Response({
+            'message': 'Default address updated',
+            'address': serializer.data
+        },status=status.HTTP_200_OK)
+        
