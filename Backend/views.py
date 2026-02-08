@@ -36,6 +36,7 @@ class RegisterView(CreateAPIView):
                     'email': user.email,
                     'first_name': user.first_name,
                     'last_name': user.last_name,
+                    'profile_pic': user.profile_pic.url if user.profile_pic else None,
                 },
                 'tokens': {
                     'access': str(refresh.access_token),
