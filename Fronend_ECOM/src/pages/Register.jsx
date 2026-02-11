@@ -73,8 +73,8 @@ const Register = () => {
                 {/* Header */}
                 <div className='text-center mb-8'>
                     <div className='flex justify-center mb-4'>
-                        <div className='p-3 bg-indigo-100 rounded-full'>
-                            <ShoppingCart className="h-10 w-10 text-indigo-600" />
+                        <div className='p-3 bg-stone-100 rounded-full'>
+                            <ShoppingCart className="h-10 w-10 text-stone-600" />
                         </div>
                     </div>
                     <h2 className="text-3xl font-extrabold text-gray-900">Create account</h2>
@@ -107,7 +107,7 @@ const Register = () => {
                                     onChange={handleChange}
                                     autoComplete='username'
                                     placeholder='John'
-                                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none'
+                                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 focus:border-stone-500 outline-none'
                                 />
                             </div>
                             <div>
@@ -120,7 +120,7 @@ const Register = () => {
                                     onChange={handleChange}
                                     autoComplete='username'
                                     placeholder='Smith'
-                                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none'
+                                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 focus:border-stone-500 outline-none'
                                 />
                             </div>
                         </div>
@@ -134,7 +134,7 @@ const Register = () => {
                                 value={formData.phone}
                                 onChange={handleChange}
                                 placeholder='+91 98765 43210'
-                                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none'
+                                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 focus:border-stone-500 outline-none'
                             />
                         </div>
 
@@ -148,7 +148,7 @@ const Register = () => {
                                 onChange={handleChange}
                                 autoComplete=''
                                 placeholder='your@gmail.com'
-                                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none'
+                                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 focus:border-stone-500 outline-none'
                             />
                         </div>
 
@@ -159,7 +159,7 @@ const Register = () => {
                                 type="file"
                                 accept="image/*"
                                 onChange={handleImage}
-                                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none'
+                                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 focus:border-stone-500 outline-none'
                             />
                             {previewUrl && (
                                 <div className='mt-2 relative w-24 h-24'>
@@ -181,7 +181,7 @@ const Register = () => {
                                     value={formData.password}
                                     onChange={handleChange}
                                     autoComplete='new-password'
-                                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none'
+                                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 focus:border-stone-500 outline-none'
                                 />
                             </div>
                             <div>
@@ -193,7 +193,7 @@ const Register = () => {
                                     value={formData.confirm_password}
                                     autoComplete='new-password'
                                     onChange={handleChange}
-                                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none'
+                                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 focus:border-stone-500 outline-none'
                                 />
                             </div>
                         </div>
@@ -201,7 +201,7 @@ const Register = () => {
                         <button
                             type='submit'
                             disabled={loading}
-                            className='w-full mt-6 bg-indigo-600 text-white py-2.5 rounded-md font-bold hover:bg-indigo-700 transition duration-200 disabled:opacity-50 shadow-md'
+                            className='w-full mt-6 bg-stone-600 text-white py-2.5 rounded-md font-bold hover:bg-stone-700 transition duration-200 disabled:opacity-50 shadow-md'
                         >
                             {loading ? 'Creating account...' : 'Create account'}
                         </button>
