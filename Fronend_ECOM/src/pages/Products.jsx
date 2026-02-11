@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 
 import { categoryAPI, productAPI } from '../services/api'
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import debounce from 'lodash.debounce';
 import ProductCard from '../components/ProductCard';
@@ -13,7 +13,7 @@ const Products = () => {
     const [products, setProducts] = useState([])
     const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(false)
-    const [ totalCount, setTotalCount] = useState(0)
+    const [totalCount, setTotalCount] = useState(0)
     const [showFilters, setShowFilters] = useState(false)
 
     
@@ -52,39 +52,36 @@ const Products = () => {
         }
     }
 
+    // Fetch products
+    const fetchProducts = useCallback(async (currentFilters) => {
+        setLoading(true);
+        try {
+            const params = {};
+            // Only send non-empty values to API
+            Object.keys(currentFilters).forEach(key => {
+                if (currentFilters[key]) params[key] = currentFilters[key];
+            });
+
+            const { data } = await productAPI.getAllProducts(params);
+            setProducts(data.results);
+            setTotalCount(data.count);
+        } catch (error) {
+            console.error("Error fetching products:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     // Debounce product fetch
     const debouncedFetch = useMemo(
-        () => debounce((params) => {
-            fetchProducts(params);
-        }, 500),
-        []
+        () => debounce((f) => fetchProducts(f), 400),
+        [fetchProducts]
     );
 
     useEffect(() => {
         debouncedFetch(filters);
-
         return () => debouncedFetch.cancel();
-    }, [filters]);
-
-
-    // Fetch products
-    const fetchProducts = async () => {
-        setLoading(true)
-        try{
-            const params = {};
-            Object.keys(filters).forEach(key => {
-                if (filters[key]) params[key] = filters[key]
-            })
-
-            const {data} = await productAPI.getAllProducts(params);
-            setProducts(data.results);
-            setTotalCount(data.count);
-        }catch(error){
-            console.error("Error fetching products:", error)
-        } finally{
-            setLoading(false)
-        }
-    }
+    }, [filters, debouncedFetch]);
 
     const handleFilterChange = (key, value) => {
         const newFilters = { ...filters, [key]:value, page:'1'}
@@ -98,6 +95,21 @@ const Products = () => {
         setSearchParams(params)
     }
 
+    const handlePageChange = (page) => {
+        const newFilters = { ...filters, page: page.toString() }
+        setFilters(newFilters)
+
+        // update url
+        const params = {}
+        Object.keys(newFilters).forEach(k => {
+            if (newFilters[k]) params[k] = newFilters[k];
+        })
+        setSearchParams(params)
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
     const clearFilters = () => {
         setFilters({
             category: '',
@@ -108,6 +120,30 @@ const Products = () => {
             page:1,
         })
         setSearchParams({})
+    }
+
+    // Pagination calculations
+    const itemsPerPage = 12
+    const totalPages = Math.ceil(totalCount / itemsPerPage)
+    const currentPage = parseInt(filters.page)
+
+    // Generate page numbers with ellipsis
+    const getPageNumbers = () => {
+        const pages = []
+        if (totalPages <= 5) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i)
+        } else {
+            pages.push(1)
+            if (currentPage > 3) pages.push('...')
+            
+            const start = Math.max(2, currentPage - 1)
+            const end = Math.min(totalPages - 1, currentPage + 1)
+            for (let i = start; i <= end; i++) pages.push(i)
+            
+            if (currentPage < totalPages - 2) pages.push('...')
+            pages.push(totalPages)
+        }
+        return pages
     }
     
     return (
@@ -209,8 +245,8 @@ const Products = () => {
                         {/* product grid */}
                         <div className='flex-1'>
                             {loading ? (
-                                <div className='flex items-center jsutify-center py-29'>
-                                    <div className='aminamte-pin rounded-full h-12 w-12 border-stone-500 border-t-transparent' />
+                                <div className='flex items-center justify-center py-29'>
+                                    <div className='animated-pin rounded-full h-12 w-12 border-stone-500 border-t-transparent' />
                                 </div>
                             ) : products.length === 0 ? (
                                 <div className='bg-white rounded-lg shadow-md p-12 text-center'>
@@ -225,11 +261,59 @@ const Products = () => {
                                     </button>
                                 </div>
                             ) : (
-                                <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
-                                    {products.map((product) => (
-                                        <ProductCard key={product.id} product={product} />
-                                    ))}
-                                </div>
+                                <>
+                                    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
+                                        {products.map((product) => (
+                                            <ProductCard key={product.id} product={product} />
+                                        ))}
+                                    </div>
+
+                                    {/* Pagination */}
+                                    {totalPages > 1 && (
+                                        <div className='mt-8 flex items-center justify-center gap-2'>
+                                            {/* Previous Button */}
+                                            <button
+                                                onClick={() => handlePageChange(currentPage - 1)}
+                                                disabled={currentPage === 1}
+                                                className='flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium'
+                                            >
+                                                <ChevronLeft className='h-4 w-4' />
+                                                Prev
+                                            </button>
+
+                                            {/* Page Numbers */}
+                                            <div className='flex items-center gap-1'>
+                                                {getPageNumbers().map((pageNum, idx) => (
+                                                    pageNum === '...' ? (
+                                                        <span key={`dots-${idx}`} className='px-2 text-gray-400 select-none'>…</span>
+                                                    ) : (
+                                                        <button
+                                                            key={pageNum}
+                                                            onClick={() => handlePageChange(pageNum)}
+                                                            className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors ${
+                                                                currentPage === pageNum
+                                                                    ? 'bg-stone-600 text-white shadow-sm'
+                                                                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            {pageNum}
+                                                        </button>
+                                                    )
+                                                ))}
+                                            </div>
+
+                                            {/* Next Button */}
+                                            <button
+                                                onClick={() => handlePageChange(currentPage + 1)}
+                                                disabled={currentPage >= totalPages}
+                                                className='flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium'
+                                            >
+                                                Next
+                                                <ChevronRight className='h-4 w-4' />
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Profile from './pages/Profile'
 import Navbar from './components/Navbar'
 import Products from './pages/Products'
+import ProductDetail from './pages/ProductDetail'
 
 
 const App = () => {
@@ -18,6 +19,7 @@ const App = () => {
         <Route path='/login' element={<Login />} />
         <Route path='/profile' element={<Profile />} />
         <Route path='/products' element={<Products />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
       </Routes>
 
     </div>
