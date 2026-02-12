@@ -9,11 +9,33 @@ export const useAuthStore = create((set, get) => ({
 
     // 1. App start hote hi user check karna
     initAuth: async () => {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-            await get().fetchUser();
-        } else {
-            set({ loading: false });
+        const token = localStorage.getItem("access_token");
+
+        if (!token) {
+            set({ user: null, loading: false, isAuthenticated: false });
+            return;
+        }
+
+        try {
+            const res = await authAPI.getProfile();
+
+            set({
+                user: res.data,
+                isAuthenticated: true,
+                loading: false
+            });
+
+        } catch (error) {
+
+            // token invalid ho sakta hai
+            localStorage.removeItem("access_token", error);
+            localStorage.removeItem("refresh_token", error);
+
+            set({
+                user: null,
+                isAuthenticated: false,
+                loading: false
+            });
         }
     },
 
@@ -66,9 +88,19 @@ export const useAuthStore = create((set, get) => ({
             toast.success('Account created! 🎉');
             return { success: true };
         } catch (error) {
-            const errors = error.response?.data?.error || {};
-            // Wahi logic jo aapne likha tha, abhi bhi valid hai
-            const message = Object.values(errors).flat()[0] || 'Registration Failed';
+            let message = 'Registration Failed';
+            
+            if (error.response?.data) {
+                // Check if it's our custom error format { error: "Login failed" }
+                if (error.response.data.error) {
+                    message = error.response.data.error;
+                } 
+                // Check if it's DRF validation error format { field: ["Error 1"] }
+                else if (typeof error.response.data === 'object') {
+                    const firstError = Object.values(error.response.data).flat()[0];
+                    if (firstError) message = firstError;
+                }
+            }
             
             set({ loading: false, error: message });
             toast.error(message);

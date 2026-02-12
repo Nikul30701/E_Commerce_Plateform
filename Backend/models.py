@@ -10,7 +10,12 @@ class Gender(models.TextChoices):
     FEMALE = "F", "Female"
     OTHER = "T", "Other"
 
+
 def validated_age(value):
+    """Validator to ensure user is at least 16 years old"""
+    if value is None:  # ← Allow null values
+        return
+    
     today = date.today()
     
     if value > today:
@@ -20,13 +25,29 @@ def validated_age(value):
         (today.month, today.day) < (value.month, value.day)
     )
     if age < 16:
-        raise ValidationError("User must me above 16.")
+        raise ValidationError("User must be above 16 years old.")
+
 
 class User(AbstractUser):
-    gender = models.CharField(max_length=10, choices=Gender.choices, default=Gender.MALE)
-    dob = models.DateField(validators=[validated_age], null=True)
+    gender = models.CharField(
+        max_length=10, 
+        choices=Gender.choices, 
+        default=Gender.MALE,
+        blank=True  # ← Add this
+    )
+    dob = models.DateField(
+        validators=[validated_age], 
+        null=True, 
+        blank=True  # ← Add this (VERY IMPORTANT)
+    )
+    username = None
+    email = models.EmailField(unique=True) 
+    phone = models.CharField(max_length=15, blank=True, null=True)
     profile_pic = models.ImageField(upload_to='avatar/', null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
+    
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name']
     
     class Meta:
         ordering = ['-date_joined']
@@ -34,7 +55,9 @@ class User(AbstractUser):
     @property
     def fullname(self):
         return f"{self.first_name} {self.last_name}".strip()
-        
+    
+    def __str__(self):
+        return self.email        
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)

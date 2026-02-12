@@ -162,3 +162,10 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION':True,
 }
+
+AUTHENTICATION_BACKENDS = [
+    'Backend.backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+

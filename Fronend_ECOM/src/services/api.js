@@ -19,6 +19,13 @@ api.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
         }
+
+        // If sending FormData, remove Content-Type so browser sets it
+        // automatically to multipart/form-data with the correct boundary
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+        }
+
         return config;
     },
     (error) => Promise.reject(error)
@@ -67,7 +74,7 @@ export const authAPI = {
     login: (data) => api.post('/login/', data),
     logout: () => api.post('/logout/'),
     getProfile: () => api.get('/profile/'),
-    updateProfile: (data) => api.put('/profile/update', data),
+    updateProfile: (data) => api.patch('/profile/update', data),
     changePassword: (data) => api.post('/change-password/', data),
 }
 

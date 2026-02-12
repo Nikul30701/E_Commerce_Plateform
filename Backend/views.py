@@ -1,5 +1,5 @@
 from rest_framework.views import APIView
-from django.contrib.auth import authenticate, update_session_auth_hash
+from django.contrib.auth import authenticate, update_session_auth_hash, get_user_model
 from rest_framework.viewsets import ViewSet, ModelViewSet, ReadOnlyModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
@@ -15,6 +15,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from decimal import Decimal
 from django.db.models import F
+import logging
+
+logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 # user registrations
@@ -24,6 +28,9 @@ class RegisterView(CreateAPIView):
         
         def create(self, request, *args, **kwargs):
             serializer = self.get_serializer(data=request.data)
+            if not serializer.is_valid():
+                print("Register Validation Errors:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
             
@@ -45,43 +52,129 @@ class RegisterView(CreateAPIView):
             }, status=status.HTTP_201_CREATED)
     
 
-class LoginView(CreateAPIView):
-    serializer_class = LoginSerializer
-    permission_classes = [AllowAny]
+class LoginView(APIView):
+    """
+    User login endpoint.
     
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+    POST /api/login/
+    {
+        "email": "user@example.com",
+        "password": "password123"
+    }
+    
+    Returns:
+    {
+        "message": "Login successful!",
+        "user": {
+            "id": 1,
+            "email": "user@example.com",
+            "first_name": "John",
+            "last_name": "Doe"
+        },
+        "tokens": {
+            "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+            "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc..."
+        }
+    }
+    """
+    permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
+    
+    def post(self, request, *args, **kwargs):
+        """Handle login POST request"""
         
+        # Validate input
+        serializer = LoginSerializer(data=request.data)
         if not serializer.is_valid():
+            logger.warning(f"Login validation failed: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        email = serializer.validated_data['email']
-        password = serializer.validated_data['password']
+        email = serializer.validated_data.get('email')
+        password = serializer.validated_data.get('password')
         
-        user = authenticate(request=request, email=email, password=password)
-        
-        if user is None:
+        try:
+            # Step 1: Try using Django's authenticate function
+            # This will use your custom backend if configured
+            logger.info(f"Attempting authentication for: {email}")
+            user = authenticate(request=request, username=email, password=password)
+            
+            # Step 2: If authenticate returns None, try manual lookup
+            # (in case the backend is not configured properly)
+            if user is None:
+                logger.info(f"Authenticate returned None, trying manual lookup for: {email}")
+                try:
+                    user = User.objects.get(email=email)
+                    
+                    # Verify password
+                    if not user.check_password(password):
+                        logger.warning(f"Invalid password for user: {email}")
+                        return Response(
+                            {'error': 'Invalid email or password'},
+                            status=status.HTTP_401_UNAUTHORIZED
+                        )
+                    
+                    # Check if user is active
+                    if not user.is_active:
+                        logger.warning(f"Login attempt for inactive user: {email}")
+                        return Response(
+                            {'error': 'Account is disabled'},
+                            status=status.HTTP_401_UNAUTHORIZED
+                        )
+                        
+                except User.DoesNotExist:
+                    logger.warning(f"User not found: {email}")
+                    return Response(
+                        {'error': 'Invalid email or password'},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+            else:
+                # User was authenticated, but double-check they're active
+                if not user.is_active:
+                    logger.warning(f"Login attempt for inactive user: {email}")
+                    return Response(
+                        {'error': 'Account is disabled'},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+            
+            # Step 3: Generate JWT tokens
+            logger.info(f"Generating tokens for user: {email}")
+            refresh = RefreshToken.for_user(user)
+            
+            logger.info(f"Successful login for user: {email}")
+            
+            return Response({
+                'message': 'Login successful!',
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name
+                },
+                'tokens': {
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist as e:
+            logger.error(f"User.DoesNotExist: {str(e)}")
             return Response(
-                {'error':'Invalid email or password'},
+                {'error': 'Invalid email or password'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
-        refresh = RefreshToken.for_user(user)
-        
-        return Response({
-            'message':'Login successful!',
-            'user':{
-                'id':user.id,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name':user.last_name
-            },
-            'tokens': {
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-            }
-        }, status=status.HTTP_200_OK)
-    
+        except Exception as e:
+            # Catch any unexpected errors and log them
+            logger.exception(f"Unexpected error during login: {str(e)}")
+            print(f"\n❌ LOGIN ERROR: {str(e)}")
+            print(f"Error type: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()  # Print full traceback to console
+            
+            return Response(
+                {'error': 'An error occurred during login. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )    
     
 class LogoutView(GenericAPIView):
     permission_classes = [IsAuthenticated]
@@ -157,6 +250,11 @@ class CartView(ViewSet):
     def get_object(self):
         cart,_ = Cart.objects.get_or_create(user=self.request.user)
         return Cart.objects.prefetch_related("items__product").get(id=cart.id)
+
+    def list(self, request):
+        cart = self.get_object()
+        serializer = self.serializer_class(cart)
+        return Response(serializer.data)
     
 
 class AddToCartView(APIView):
@@ -490,4 +588,3 @@ class AddressViewSet(ModelViewSet):
             'message': 'Default address updated',
             'address': serializer.data
         },status=status.HTTP_200_OK)
-        

@@ -11,7 +11,7 @@ const Profile = () => {
     const [profileData, setProfileData] = useState({
         first_name: '',
         last_name: '',
-        phone_number: '',
+        phone: '',
         profile_pic: null,
     });
     const [passwordData, setPasswordData] = useState({
@@ -25,7 +25,7 @@ const Profile = () => {
             setProfileData({
                 first_name: user?.first_name || '',
                 last_name: user?.last_name || '',
-                phone_number: user?.phone_number || '',
+                phone: user?.phone || '',
                 profile_pic: user?.profile_pic
             });
         }
@@ -37,7 +37,7 @@ const Profile = () => {
         const formData = new FormData();
         formData.append('first_name', profileData.first_name);
         formData.append('last_name', profileData.last_name);
-        formData.append('phone_number', profileData.phone_number);
+        formData.append('phone', profileData.phone);
         if (profileData.profile_pic instanceof File) {
             formData.append('profile_pic', profileData.profile_pic);
         }
@@ -191,8 +191,8 @@ const Profile = () => {
                                         <Phone className='absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5' />
                                         <input 
                                             type="tel" 
-                                            value={profileData.phone_number} 
-                                            onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })} 
+                                            value={profileData.phone} 
+                                            onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })} 
                                             className={`${inputStyle} pl-12`} 
                                         />
                                     </div>

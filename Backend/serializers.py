@@ -3,17 +3,22 @@ from .models import *
 from rest_framework.exceptions import ValidationError
 
 class RegisterSerializer(serializers.ModelSerializer):
-    username = serializers.CharField( min_length=6)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=6)
     confirm_password = serializers.CharField(write_only=True, min_length=6)
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'gender', 'dob', 'profile_pic', 'password', 'confirm_password']
+        fields = ['id', 'email', 'first_name', 'last_name', 'phone', 'gender', 'dob', 'profile_pic', 'password', 'confirm_password']
         extra_kwargs = {
             'password': {'write_only': True, 'min_length': 6},
-            'email':{'required':True}
+            'email':{'required':True},
+            'gender': {'required': False, 'allow_blank': True},
+            'dob': {'required': False, 'allow_null': True},
+            'phone': {'required': False},
+            'first_name': {'required': False},
+            'last_name': {'required': False},
+            'profile_pic': {'required': False}
         }
     
     def validate(self,data):
@@ -29,18 +34,45 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('confirm_password')
         
+        # Handle optional fields with defaults or None
+        gender = validated_data.get('gender') or 'M'  # Default to Male if not provided
+        dob = validated_data.get('dob')
+        profile_pic = validated_data.get('profile_pic')
+        phone = validated_data.get('phone')
+
         user = User.objects.create_user(
-            username=validated_data["username"],
+            username=validated_data['email'],
             email=validated_data['email'],
             password=validated_data['password'],
-            gender=validated_data.get('gender'),
-            dob=validated_data.get('dob'),
-            profile_pic=validated_data.get('profile_pic'),
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            gender=gender,
+            dob=dob,
+            phone=phone,
+            profile_pic=profile_pic,
         )
         return user
+
+    def validate_dob(self, value):
+        """Validate in serializer instead of relying on model validator"""
+        if value is None:
+            return value
+        
+        today = date.today()
+        if value > today:
+            raise serializers.ValidationError("Date of birth cannot be in the future.")
+        
+        age = today.year - value.year - (
+            (today.month, today.day) < (value.month, value.day)
+        )
+        
+        if age < 16:
+            raise serializers.ValidationError("You must be at least 16 years old to register.")
+        
+        return value
     
     
-class LoginSerializer(serializers.ModelSerializer):
+class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
     

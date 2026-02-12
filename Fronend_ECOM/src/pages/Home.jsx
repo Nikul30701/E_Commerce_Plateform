@@ -34,8 +34,8 @@ const Home = () => {
                     categoryAPI.getAllCategories(),
                     productAPI.getAllProducts()
                 ]);
-                setCategories(categoriesRes.data);
-                const allProducts = productsRes.data;
+                setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : (categoriesRes.data.results || []));
+                const allProducts = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data.results || []);
                 setProducts(allProducts);
                 setFeaturedProducts([...allProducts].sort(() => 0.5 - Math.random()).slice(0, 8));
             } catch (error) {
@@ -51,7 +51,7 @@ const Home = () => {
     const fetchProducts = useCallback(async (searchTerm) => {
         try {
             const res = await productAPI.getAllProducts(searchTerm);
-            setProducts(res.data);
+            setProducts(Array.isArray(res.data) ? res.data : (res.data.results || []));
         } catch (error) {
             console.error("Search error:", error);
         }
@@ -135,7 +135,7 @@ const Home = () => {
             <section className="relative pt-32 pb-20 overflow-hidden">
                 <div className="max-w-7xl mx-auto px-6 relative z-10">
                     <div className="max-w-3xl">
-                        <h1 className="text-6xl md:text-8xl font-black text-stone-900 leading-[0.9] mb-8 tracking-tighter">
+                        <h1 className="text-6xl md:text-8xl  font-black text-stone-900 leading-[0.9] mb-8 tracking-tighter">
                             ELEVATE YOUR <br />
                             <span className="text-stone-400 italic">APP EXPERIENCE.</span>
                         </h1>

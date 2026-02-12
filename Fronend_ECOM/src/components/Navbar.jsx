@@ -70,7 +70,7 @@ const Navbar = () => {
                         </Link>
 
                         {/* User Menu */}
-                        {isAuthenticated ? (
+                        {user ? (
                             <div className='relative'>
                                 <button 
                                     onClick={() => setShowMenu(!showMenu)} 
