@@ -6,6 +6,7 @@ export const useAuthStore = create((set, get) => ({
     user: null,
     loading: true,
     error: null,
+    isAuthenticated: false,
 
     // 1. App start hote hi user check karna
     initAuth: async () => {
@@ -64,12 +65,21 @@ export const useAuthStore = create((set, get) => ({
             localStorage.setItem('refresh_token', data.tokens.refresh);
             
             // State update
-            set({ user: data.user, loading: false });
+            set({ 
+                user: data.user, 
+                isAuthenticated: true,
+                loading: false,
+                error: null
+            });
             toast.success('Welcome back!');
             return { success: true };
         } catch (error) {
-            const message = error.response?.data?.error || 'Login failed';
-            set({ loading: false, error: message });
+            const message = error.response?.data?.error || 'Invalid email or password';
+            set({ 
+                loading: false,
+                error: message,
+                user:null
+            });
             toast.error(message);
             return { success: false, error: message };
         }
@@ -84,7 +94,7 @@ export const useAuthStore = create((set, get) => ({
             localStorage.setItem('access_token', data.tokens.access);
             localStorage.setItem('refresh_token', data.tokens.refresh);
             
-            set({ user: data.user, loading: false });
+            set({ user: data.user, isAuthenticated: true, loading: false });
             toast.success('Account created! 🎉');
             return { success: true };
         } catch (error) {
@@ -129,9 +139,12 @@ export const useAuthStore = create((set, get) => ({
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         
-        set({ user: null, error: null, loading: false });
+        set({ user: null, isAuthenticated: false, error: null, loading: false });
         
         if (callApi) toast.success('Logged out successfully');
+
+        useCartStore.getState().resetCart()
+
         
         // Note: Redirect component level pe handle karein (e.g., using useEffect on user state)
         // ya phir router object pass karein.

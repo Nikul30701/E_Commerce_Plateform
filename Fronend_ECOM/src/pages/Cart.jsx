@@ -28,40 +28,39 @@ const Cart = () => {
         }
     }, [isAuthenticated, fetchCart])
 
-    /* ─── Not Authenticated ─── */
+    // Not Authenticated
     if (!isAuthenticated) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-                <div className="text-center max-w-md">
-                    <div className="mx-auto w-20 h-20 rounded-full bg-stone-100 flex items-center justify-center mb-6">
-                        <ShoppingBag className="h-10 w-10 text-stone-400" />
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4">
+                <div className="text-center max-w-sm">
+                    <div className="mx-auto w-20 h-20 rounded-2xl bg-slate-200/50 flex items-center justify-center mb-6 backdrop-blur-sm">
+                        <ShoppingBag className="h-10 w-10 text-slate-400" />
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                        Please login to view your cart
+                    <h1 className="text-3xl font-bold text-slate-900 mb-3 tracking-tight">
+                        Cart awaits
                     </h1>
-                    <p className="text-gray-500 mb-8">
-                        Sign in to your account to access your shopping cart and
-                        continue shopping.
+                    <p className="text-slate-600 mb-8 leading-relaxed text-sm">
+                        Sign in to your account to view your shopping cart and continue shopping.
                     </p>
                     <button
                         onClick={() => navigate('/login')}
-                        className="inline-flex items-center px-8 py-3 bg-stone-700 text-white font-medium rounded-full hover:bg-stone-800 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
+                        className="w-full py-3.5 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
                     >
-                        Login to Continue
+                        Sign in
                     </button>
                 </div>
             </div>
         )
     }
 
-    /* ─── Loading ─── */
+    // Loading
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-screen bg-gray-50">
-                <div className="flex items-center gap-1">
-                    <span className="inline-block w-[3px] h-5 bg-stone-400 rounded animate-scaleUp"></span>
-                    <span className="inline-block w-[3px] h-8 bg-stone-400 rounded animate-scaleUp delay-200"></span>
-                    <span className="inline-block w-[3px] h-5 bg-stone-400 rounded animate-scaleUp delay-500"></span>
+            <div className="flex justify-center items-center min-h-screen bg-slate-50">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-6 bg-slate-300 rounded-full animate-pulse" style={{ animationDelay: '0s' }} />
+                    <div className="w-2 h-8 bg-slate-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    <div className="w-2 h-6 bg-slate-300 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
                 </div>
             </div>
         )
@@ -69,26 +68,24 @@ const Cart = () => {
 
     const isEmpty = !cart || !cart.items || cart.items.length === 0
 
-    /* ─── Empty Cart ─── */
+    // Empty Cart
     if (isEmpty) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-                <div className="text-center max-w-md">
-                    <div className="mx-auto w-24 h-24 rounded-full bg-stone-100 flex items-center justify-center mb-6">
-                        <ShoppingBag className="h-12 w-12 text-stone-300" />
+            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4">
+                <div className="text-center max-w-sm">
+                    <div className="mx-auto w-24 h-24 rounded-2xl bg-slate-200/40 flex items-center justify-center mb-6 backdrop-blur-sm">
+                        <ShoppingBag className="h-12 w-12 text-slate-300" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-3xl font-bold text-slate-900 mb-3 tracking-tight">
                         Your cart is empty
                     </h2>
-                    <p className="text-gray-500 mb-8">
-                        Looks like you haven't added anything to your cart yet.
-                        Start shopping to fill it up!
+                    <p className="text-slate-600 mb-8 text-sm leading-relaxed">
+                        No items yet. Start exploring to find something you love.
                     </p>
                     <button
                         onClick={() => navigate('/products')}
-                        className="inline-flex items-center px-8 py-3 bg-stone-700 text-white font-medium rounded-full hover:bg-stone-800 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
+                        className="w-full py-3.5 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
                         Browse Products
                     </button>
                 </div>
@@ -96,10 +93,9 @@ const Cart = () => {
         )
     }
 
-    /* ─── Helpers ─── */
     const handleQuantityChange = async (itemId, newQuantity) => {
         if (newQuantity < 1) return
-        await updateCart(itemId, { quantity: newQuantity })
+        await updateCart(itemId, newQuantity)
     }
 
     const handleRemoveItem = async (itemId) => {
@@ -110,308 +106,268 @@ const Cart = () => {
         await clearCart()
     }
 
-    const subtotal = parseFloat(cart.total_price) || 0
-    const shipping = subtotal > 499 ? 0 : 49
-    const total = subtotal + shipping
+    const subtotal = cart?.items?.reduce((sum, item) => {
+        const price = Number(item.item_total) || Number(item.unit_price) * Number(item.quantity) || 0;
+        return sum + price;
+    }, 0) || 0;
+    const shipping = (subtotal > 499 || subtotal === 0) ? 0 : 49;
+    const total = subtotal + shipping;
 
-    /* ─── Main Cart View ─── */
     return (
-        <div className="min-h-screen bg-gray-50 py-8 lg:py-12">
+        <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-slate-50 py-10 lg:py-16">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-10">
                     <div>
-                        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                            Shopping Cart
+                        <h1 className="text-4xl font-bold text-slate-900 tracking-tight">
+                            Cart
                         </h1>
-                        <p className="text-gray-500 mt-1">
-                            {cart.total_items}{' '}
-                            {cart.total_items === 1 ? 'item' : 'items'} in your
-                            cart
+                        <p className="text-slate-500 mt-2 text-sm">
+                            {cart.total_items} {cart.total_items === 1 ? 'item' : 'items'}
                         </p>
                     </div>
                     <button
                         onClick={handleClearCart}
-                        className="mt-4 sm:mt-0 inline-flex items-center gap-2 text-sm text-red-500 hover:text-red-700 font-medium transition-colors cursor-pointer"
+                        className="mt-4 sm:mt-0 px-4 py-2.5 text-sm text-slate-600 hover:text-red-600 hover:bg-red-50/30 rounded-lg transition-all duration-200 flex items-center gap-2 font-medium cursor-pointer"
                     >
                         <Trash2 className="w-4 h-4" />
-                        Clear Cart
+                        Clear
                     </button>
                 </div>
 
-                <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+                <div className="grid lg:grid-cols-12 gap-8">
                     {/* ─── Cart Items ─── */}
                     <div className="lg:col-span-8">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            {/* Table header — desktop only */}
-                            <div className="hidden md:grid md:grid-cols-12 gap-4 px-6 py-4 bg-gray-50/80 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                                <span className="col-span-6">Product</span>
-                                <span className="col-span-2 text-center">
-                                    Price
-                                </span>
-                                <span className="col-span-2 text-center">
-                                    Quantity
-                                </span>
-                                <span className="col-span-2 text-right">
-                                    Total
-                                </span>
-                            </div>
+                        <div className="space-y-3">
+                            {cart.items.map((item, index) => (
+                                <div
+                                    key={item.id}
+                                    className="group bg-white rounded-xl border border-slate-200 p-5 hover:border-slate-300 hover:shadow-sm transition-all duration-300"
+                                    style={{ animationDelay: `${index * 50}ms` }}
+                                >
+                                    <div className="flex gap-5">
+                                        {/* Product Image */}
+                                        <Link
+                                            to={`/product/${item.product}`}
+                                            className="shrink-0 relative"
+                                        >
+                                            <div className="w-24 h-24 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 group-hover:border-slate-300 transition-colors">
+                                                {item.product_image ? (
+                                                    <img
+                                                        src={item.product_image.startsWith('http') 
+                                                            ? item.product_image 
+                                                            : `${API_BASE}${item.product_image.replace(/\/+/g, '/').startsWith('/') ? '' : '/'}${item.product_image.replace(/\/+/g, '/')}`}
+                                                        alt={item.product_name}
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                                        <ShoppingBag size={28} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Link>
 
-                            {/* Items */}
-                            <ul className="divide-y divide-gray-100">
-                                {cart.items.map((item) => (
-                                    <li
-                                        key={item.id}
-                                        className="group px-4 sm:px-6 py-5 hover:bg-stone-50/40 transition-colors duration-200"
-                                    >
-                                        <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center flex flex-col gap-4">
-                                            {/* Product Info */}
-                                            <div className="md:col-span-6 flex items-center gap-4">
-                                                {/* Thumbnail */}
+                                        {/* Product Details */}
+                                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                            <div>
                                                 <Link
                                                     to={`/product/${item.product}`}
-                                                    className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gray-100 overflow-hidden border border-gray-200 hover:border-stone-300 transition-colors"
+                                                    className="text-base font-semibold text-slate-900 hover:text-slate-700 transition-colors line-clamp-2"
                                                 >
-                                                    {item.product_image ? (
-                                                        <img
-                                                            src={
-                                                                item.product_image.startsWith(
-                                                                    'http'
-                                                                )
-                                                                    ? item.product_image
-                                                                    : `${API_BASE}${item.product_image}`
-                                                            }
-                                                            alt={
-                                                                item.product_name
-                                                            }
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                                            <ShoppingBag
-                                                                size={28}
-                                                            />
-                                                        </div>
-                                                    )}
+                                                    {item.product_name}
                                                 </Link>
-
-                                                {/* Name & Remove */}
-                                                <div className="min-w-0 flex-1">
-                                                    <Link
-                                                        to={`/product/${item.product}`}
-                                                        className="text-sm sm:text-base font-semibold text-gray-800 hover:text-stone-600 transition-colors line-clamp-2"
-                                                    >
-                                                        {item.product_name}
-                                                    </Link>
-
-                                                    {/* Unit price — mobile */}
-                                                    <p className="md:hidden text-sm text-gray-500 mt-1">
-                                                        ₹
-                                                        {parseFloat(
-                                                            item.unit_price
-                                                        ).toLocaleString(
-                                                            'en-IN'
-                                                        )}{' '}
-                                                        each
-                                                    </p>
-
-                                                    <button
-                                                        onClick={() =>
-                                                            handleRemoveItem(
-                                                                item.id
-                                                            )
-                                                        }
-                                                        className="mt-2 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                        Remove
-                                                    </button>
-                                                </div>
+                                                <p className="text-sm text-slate-500 mt-1.5">
+                                                    ₹{parseFloat(item.unit_price).toLocaleString('en-IN')} each
+                                                </p>
                                             </div>
 
-                                            {/* Unit Price — desktop */}
-                                            <div className="hidden md:flex md:col-span-2 justify-center">
-                                                <span className="text-sm font-medium text-gray-700">
-                                                    ₹
-                                                    {parseFloat(
-                                                        item.unit_price
-                                                    ).toLocaleString('en-IN')}
-                                                </span>
-                                            </div>
+                                            <button
+                                                onClick={() => handleRemoveItem(item.id)}
+                                                className="text-xs text-slate-400 hover:text-red-600 transition-colors w-fit font-medium cursor-pointer"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
 
+                                        {/* Quantity & Total */}
+                                        <div className="flex flex-col items-end justify-between">
                                             {/* Quantity Controls */}
-                                            <div className="md:col-span-2 flex md:justify-center">
-                                                <div className="inline-flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
-                                                    <button
-                                                        onClick={() =>
-                                                            handleQuantityChange(
-                                                                item.id,
-                                                                item.quantity -
-                                                                    1
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            item.quantity <= 1
-                                                        }
-                                                        className="px-2.5 py-1.5 text-gray-500 hover:bg-stone-50 hover:text-stone-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                                                    >
-                                                        <Minus size={14} />
-                                                    </button>
-                                                    <span className="px-4 py-1.5 text-sm font-semibold text-gray-800 border-x border-gray-200 min-w-[40px] text-center select-none">
-                                                        {item.quantity}
-                                                    </span>
-                                                    <button
-                                                        onClick={() =>
-                                                            handleQuantityChange(
-                                                                item.id,
-                                                                item.quantity +
-                                                                    1
-                                                            )
-                                                        }
-                                                        className="px-2.5 py-1.5 text-gray-500 hover:bg-stone-50 hover:text-stone-700 transition-colors cursor-pointer"
-                                                    >
-                                                        <Plus size={14} />
-                                                    </button>
-                                                </div>
+                                            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+                                                <button
+                                                    onClick={() =>
+                                                        handleQuantityChange(
+                                                            item.id,
+                                                            item.quantity - 1
+                                                        )
+                                                    }
+                                                    disabled={item.quantity <= 1}
+                                                    className="px-3 py-1.5 text-slate-500 hover:bg-white hover:text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                                >
+                                                    <Minus size={14} />
+                                                </button>
+                                                <span className="px-3 py-1.5 text-sm font-semibold text-slate-900 border-x border-slate-200 min-w-[40px] text-center select-none">
+                                                    {item.quantity}
+                                                </span>
+                                                <button
+                                                    onClick={() =>
+                                                        handleQuantityChange(
+                                                            item.id,
+                                                            item.quantity + 1
+                                                        )
+                                                    }
+                                                    className="px-3 py-1.5 text-slate-500 hover:bg-white hover:text-slate-700 transition-all cursor-pointer"
+                                                >
+                                                    <Plus size={14} />
+                                                </button>
                                             </div>
 
                                             {/* Item Total */}
-                                            <div className="md:col-span-2 flex md:justify-end">
-                                                <span className="text-sm sm:text-base font-bold text-gray-900">
-                                                    ₹
-                                                    {parseFloat(
-                                                        item.item_total
-                                                    ).toLocaleString('en-IN', {
-                                                        minimumFractionDigits: 2,
-                                                    })}
-                                                </span>
-                                            </div>
+                                            <span className="text-lg font-bold text-slate-900">
+                                                ₹
+                                                {parseFloat(item.item_total).toLocaleString(
+                                                    'en-IN',
+                                                    { minimumFractionDigits: 2 }
+                                                )}
+                                            </span>
                                         </div>
-                                    </li>
-                                ))}
-                            </ul>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         {/* Continue Shopping */}
-                        <div className="mt-6">
+                        <div className="mt-8">
                             <button
                                 onClick={() => navigate('/products')}
-                                className="inline-flex items-center gap-2 text-sm text-stone-600 hover:text-stone-800 font-medium transition-colors cursor-pointer"
+                                className="text-sm text-slate-600 hover:text-slate-900 font-medium flex items-center gap-2 transition-colors cursor-pointer group"
                             >
-                                <ArrowLeft className="w-4 h-4" />
+                                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                                 Continue Shopping
                             </button>
                         </div>
                     </div>
 
-                    {/* ─── Order Summary Sidebar ─── */}
-                    <div className="lg:col-span-4 mt-8 lg:mt-0">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:sticky lg:top-28">
-                            <h2 className="text-lg font-bold text-gray-900 mb-6">
-                                Order Summary
+                    {/* ─── Order Summary ─── */}
+                    <div className="lg:col-span-4">
+                        <div className="bg-white rounded-2xl border border-slate-200 p-7 lg:sticky lg:top-28">
+                            <h2 className="text-xl font-bold text-slate-900 mb-7">
+                                Summary
                             </h2>
 
-                            {/* Breakdown */}
-                            <div className="space-y-4 text-sm">
-                                <div className="flex justify-between text-gray-600">
-                                    <span>
-                                        Subtotal ({cart.total_items}{' '}
-                                        {cart.total_items === 1
-                                            ? 'item'
-                                            : 'items'}
-                                        )
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-600">
+                                        Subtotal
                                     </span>
-                                    <span className="font-medium text-gray-800">
+                                    <span className="font-semibold text-slate-900">
                                         ₹
                                         {subtotal.toLocaleString('en-IN', {
                                             minimumFractionDigits: 2,
                                         })}
                                     </span>
                                 </div>
-                                <div className="flex justify-between text-gray-600">
-                                    <span>Shipping</span>
+
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-600">Shipping</span>
                                     {shipping === 0 ? (
-                                        <span className="font-medium text-green-600">
+                                        <span className="font-semibold text-emerald-600">
                                             Free
                                         </span>
                                     ) : (
-                                        <span className="font-medium text-gray-800">
+                                        <span className="font-semibold text-slate-900">
                                             ₹{shipping.toFixed(2)}
                                         </span>
                                     )}
                                 </div>
 
                                 {shipping > 0 && (
-                                    <p className="text-xs text-stone-500 bg-stone-50 rounded-lg px-3 py-2">
-                                        Add ₹
-                                        {(499 - subtotal).toLocaleString(
-                                            'en-IN',
-                                            { minimumFractionDigits: 2 }
-                                        )}{' '}
-                                        more for{' '}
-                                        <span className="font-semibold text-green-600">
-                                            FREE shipping
-                                        </span>
-                                    </p>
+                                    <div className="bg-amber-50/60 border border-amber-200/50 rounded-lg px-4 py-3 mt-4">
+                                        <p className="text-xs text-amber-900/70 font-medium">
+                                            Add{' '}
+                                            <span className="font-bold">
+                                                ₹
+                                                {(499 - subtotal).toLocaleString(
+                                                    'en-IN',
+                                                    { minimumFractionDigits: 2 }
+                                                )}
+                                            </span>{' '}
+                                            for free shipping
+                                        </p>
+                                    </div>
                                 )}
                             </div>
 
                             {/* Divider */}
-                            <div className="border-t border-dashed border-gray-200 my-5" />
+                            <div className="border-t border-slate-200 my-6" />
 
                             {/* Total */}
-                            <div className="flex justify-between items-center mb-6">
-                                <span className="text-base font-bold text-gray-900">
-                                    Total
-                                </span>
-                                <span className="text-xl font-extrabold text-gray-900">
-                                    ₹
-                                    {total.toLocaleString('en-IN', {
-                                        minimumFractionDigits: 2,
-                                    })}
-                                </span>
+                            <div className="mb-6">
+                                <div className="flex justify-between items-baseline">
+                                    <span className="text-sm font-medium text-slate-600">
+                                        Total
+                                    </span>
+                                    <span className="text-3xl font-bold text-slate-900">
+                                        ₹
+                                        {parseFloat(total).toLocaleString(
+                                            'en-IN',
+                                            { minimumFractionDigits: 2 }
+                                        )}
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Checkout Button */}
                             <button
                                 onClick={() => navigate('/checkout')}
-                                className="w-full py-3.5 bg-stone-700 hover:bg-stone-800 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
+                                className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer mb-6"
                             >
                                 Proceed to Checkout
                             </button>
 
                             {/* Trust Badges */}
-                            <div className="mt-6 grid grid-cols-3 gap-3">
-                                <div className="flex flex-col items-center text-center gap-1.5">
-                                    <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center">
-                                        <ShieldCheck className="w-4 h-4 text-green-600" />
-                                    </div>
-                                    <span className="text-[10px] text-gray-500 leading-tight font-medium">
-                                        Secure
-                                        <br />
-                                        Payment
-                                    </span>
-                                </div>
-                                <div className="flex flex-col items-center text-center gap-1.5">
-                                    <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
-                                        <Truck className="w-4 h-4 text-blue-600" />
-                                    </div>
-                                    <span className="text-[10px] text-gray-500 leading-tight font-medium">
-                                        Fast
-                                        <br />
-                                        Delivery
-                                    </span>
-                                </div>
-                                <div className="flex flex-col items-center text-center gap-1.5">
-                                    <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
-                                        <RotateCcw className="w-4 h-4 text-amber-600" />
-                                    </div>
-                                    <span className="text-[10px] text-gray-500 leading-tight font-medium">
-                                        Easy
-                                        <br />
-                                        Returns
-                                    </span>
-                                </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    {
+                                        icon: ShieldCheck,
+                                        label: 'Secure',
+                                        color: 'emerald',
+                                    },
+                                    {
+                                        icon: Truck,
+                                        label: 'Fast',
+                                        color: 'blue',
+                                    },
+                                    {
+                                        icon: RotateCcw,
+                                        label: 'Returns',
+                                        color: 'amber',
+                                    },
+                                ].map((badge, idx) => {
+                                    const colorMap = {
+                                        emerald: 'bg-emerald-50 text-emerald-600',
+                                        blue: 'bg-blue-50 text-blue-600',
+                                        amber: 'bg-amber-50 text-amber-600',
+                                    }
+                                    const Icon = badge.icon
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className="flex flex-col items-center gap-2"
+                                        >
+                                            <div
+                                                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                    colorMap[badge.color]
+                                                }`}
+                                            >
+                                                <Icon size={18} />
+                                            </div>
+                                            <span className="text-xs text-slate-600 font-medium text-center leading-tight">
+                                                {badge.label}
+                                            </span>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
                     </div>

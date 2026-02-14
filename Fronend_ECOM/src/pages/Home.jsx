@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { categoryAPI, productAPI } from '../services/api';
 import { Link } from 'react-router-dom';
 import { 
-  ChevronRight, Search, X, Sparkles, Flame, TrendingUp,
-  Star, ShoppingBag, ArrowRight, Zap, ArrowUpRight
+    Search, X, Flame,
+    Star, ShoppingBag, ArrowRight, Zap, ArrowUpRight
 } from 'lucide-react';
 import throttle from 'lodash/throttle';
 import debounce from 'lodash/debounce';
+
+const API_BASE = 'http://localhost:8000'
 
 const Home = () => {
     const [categories, setCategories] = useState([]);
@@ -80,8 +82,6 @@ const Home = () => {
 
     return (
         <div className="relative min-h-screen bg-[#f8f9fa] text-stone-900 font-sans">
-            
-            {/* 1. GLASS SEARCH OVERLAY */}
             {isSearchOpen && (
                 <div className="fixed inset-0 z-[999] flex items-start justify-center pt-20 px-4">
                     <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-md" onClick={() => setIsSearchOpen(false)} />
@@ -131,7 +131,7 @@ const Home = () => {
                 </div>
             )}
 
-            {/* 2. HERO SECTION */}
+            {/* HERO  */}
             <section className="relative pt-32 pb-20 overflow-hidden">
                 <div className="max-w-7xl mx-auto px-6 relative z-10">
                     <div className="max-w-3xl">
@@ -155,11 +155,10 @@ const Home = () => {
                         </div>
                     </div>
                 </div>
-                {/* Decorative background element */}
                 <div className="absolute top-0 right-0 w-1/2 h-full bg-stone-200/30 -z-0 rounded-bl-[200px] hidden lg:block" />
             </section>
 
-            {/* 3. CATEGORIES (Minimalist Circular/Rounded) */}
+            {/*  CATEGORIES  */}
             <section className="py-20 bg-white">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="flex items-end justify-between mb-12">
@@ -177,7 +176,7 @@ const Home = () => {
                                 className="group flex flex-col items-center"
                             >
                                 <div className="w-full aspect-square bg-[#f8f9fa] rounded-[2.5rem] flex items-center justify-center mb-4 group-hover:bg-stone-900 transition-all duration-500 group-hover:rotate-6 group-hover:shadow-2xl">
-                                    <span className="text-4xl group-hover:scale-125 transition-transform duration-500 group-hover:text-white font-black opacity-20 group-hover:opacity-100">
+                                    <span className="text-4xl group-hover:scale-125 transition-transform duration-500 group-hover:text-stone-200 font-black opacity-20 group-hover:opacity-100">
                                         {category.name[0]}
                                     </span>
                                 </div>
@@ -188,7 +187,7 @@ const Home = () => {
                 </div>
             </section>
 
-            {/* 4. FEATURED PRODUCTS (Clean Cards) */}
+            {/* PRODUCTS  */}
             <section className="py-24">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="flex items-center justify-between mb-12">
@@ -203,30 +202,107 @@ const Home = () => {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
-                        {featuredProducts.slice(0, 4).map((product) => (
-                            <Link key={product.id} to={`/product/${product.id}`} className="group relative">
-                                <div className="aspect-[4/5] bg-white rounded-[2rem] p-6 shadow-sm border border-stone-100 mb-6 transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2 overflow-hidden">
-                                    <div className="w-full h-full bg-[#f8f9fa] rounded-2xl mb-4 flex items-center justify-center relative">
-                                        <ShoppingBag size={40} className="text-stone-200 group-hover:scale-110 transition-transform duration-500" />
-                                        <div className="absolute top-4 right-4 px-3 py-1 bg-white/80 backdrop-blur-md border border-stone-100 rounded-full text-xs font-bold">
-                                            NEW
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-bold text-lg text-stone-800 leading-tight mb-1">{product.name}</h3>
-                                            <div className="flex items-center gap-1">
-                                                <Star size={12} className="text-amber-400 fill-current" />
-                                                <span className="text-xs font-bold text-stone-400">4.9</span>
+                    <section className="py-12">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {featuredProducts.slice(0, 4).map((product, idx) => (
+                                    <Link
+                                        key={product.id}
+                                        to={`/product/${product.id}`}
+                                        className="group relative"
+                                        style={{ animationDelay: `${idx * 100}ms` }}
+                                    >
+                                        <div className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden transition-all duration-300 hover:border-slate-300 hover:shadow-lg hover:-translate-y-2">
+                                            {/* Product Image */}
+                                            <div className="relative w-full aspect-square bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden flex items-center justify-center">
+                                                {product.image ? (
+                                                    <img
+                                                        src={
+                                                            product.image.startsWith(
+                                                                'http'
+                                                            )
+                                                                ? product.image
+                                                                : `${API_BASE}${product.image}`
+                                                        }
+                                                        alt={product.name}
+                                                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                                                    />
+                                                ) : (
+                                                    <ShoppingBag
+                                                        size={48}
+                                                        className="text-slate-200 group-hover:scale-110 transition-transform duration-500"
+                                                    />
+                                                )}
+
+                                                {/* Badge */}
+                                                <div className="absolute top-4 right-4 px-3 py-1.5 hover:opacity-100  bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg text-xs font-bold text-slate-900 shadow-sm">
+                                                    {product.discount > 0 ? (
+                                                        <span className="text-emerald-600">
+                                                            {product.discount}% OFF
+                                                        </span>
+                                                    ) : (
+                                                        'NEW'
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Product Info */}
+                                            <div className="p-5">
+                                                <h3 className="font-semibold text-slate-900 line-clamp-2 mb-3 group-hover:text-slate-700 transition-colors hover:opacity-100">
+                                                    {product.name}
+                                                </h3>
+
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-lg font-bold text-slate-900">
+                                                        ₹
+                                                        {parseFloat(
+                                                            product.discounted_price ||
+                                                                product.price
+                                                        ).toLocaleString('en-IN')}
+                                                    </span>
+                                                    {product.discount > 0 && (
+                                                        <span className="text-sm text-slate-400 line-through">
+                                                            ₹
+                                                            {parseFloat(
+                                                                product.price
+                                                            ).toLocaleString('en-IN')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Stock Status */}
+                                            <div className="px-5 pb-5">
+                                                <div className="flex items-center gap-2 text-xs font-medium">
+                                                    <div
+                                                        className={`w-2 h-2 rounded-full ${
+                                                            product.is_in_stock
+                                                                ? 'bg-emerald-500'
+                                                                : 'bg-red-500'
+                                                        }`}
+                                                    />
+                                                    <span
+                                                        className={
+                                                            product.is_in_stock
+                                                                ? 'text-emerald-700'
+                                                                : 'text-red-700'
+                                                        }
+                                                    >
+                                                        {product.is_in_stock
+                                                            ? 'In Stock'
+                                                            : 'Out of Stock'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <p className="text-xl font-black text-stone-900">${product.price}</p>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
+                                    </Link>
+                                ))}
+                            </div>
+
+                            
+                        </div>
+                    </section>
                 </div>
             </section>
         </div>

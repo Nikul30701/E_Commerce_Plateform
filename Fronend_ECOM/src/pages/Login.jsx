@@ -1,12 +1,11 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAuthStore } from '../store/useAuthStore'
 import { useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart, Mail, Lock, Eye, EyeOff } from 'lucide-react'; // Added Eye icons
+import { ShoppingCart, Mail, Lock, Eye, EyeOff } from 'lucide-react'; 
 
 const Login = () => {
-    const { login } = useAuthStore();
-    const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false); // New state for visibility
+    const { login, loading, user } = useAuthStore();
+    const [showPassword, setShowPassword] = useState(false); 
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -15,13 +14,29 @@ const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        if (loading) return;
 
-        const result = await login(formData)
-        setLoading(false)
+        const result = await login(formData);
+
         if (result.success) {
             navigate('/');
+        } else {
+            alert("Invalid email or password")
         }
+    }
+
+    useEffect(() => {
+        if(user) {
+            navigate("/")
+        }
+    }, [user])
+
+    const handleChange = (e) => {
+        const {name, value} = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]:value
+        }))
     }
 
     return (
@@ -53,7 +68,7 @@ const Login = () => {
                                     type="email"
                                     required
                                     value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    onChange={handleChange}
                                     className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-transparent outline-none"
                                     placeholder="you@example.com"
                                     autoComplete="username"
@@ -73,7 +88,7 @@ const Login = () => {
                                     type={showPassword ? "text" : "password"} // Dynamic type
                                     required
                                     value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    onChange={handleChange}
                                     className="pl-10 pr-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-transparent outline-none"
                                     placeholder="••••••••"
                                     autoComplete="current-password"

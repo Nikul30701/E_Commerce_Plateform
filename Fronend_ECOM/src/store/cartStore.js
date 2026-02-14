@@ -10,8 +10,8 @@ export const useCartStore = create((set, get) => ({
     fetchCart: async () => {
         set({loading: true})
         try {
-            const { data } = await cartAPI.get();
-            set({cart: data})
+            const { data } = await cartAPI.getCart();
+            set(() => ({cart: data}))
         } catch (error) {
             console.error('Failed to fetch cart:', error);
         } finally {
@@ -21,25 +21,33 @@ export const useCartStore = create((set, get) => ({
     // Add Item
     addToCart: async (productId, quantity=1) =>{
         try{
-            const { data } = await cartAPI.addToCart(productId, quantity);
-            set({cart: data.cart});
-            toast.success(data.message || 'Add to cart');
+            // Ensure productId is a number
+            const payload = {
+                product_id: parseInt(productId, 10),
+                quantity: parseInt(quantity, 10)
+            };
+            
+            const { data } = await cartAPI.addToCart(payload);
+            await get().fetchCart();
+            toast.success(data.message || 'Added to cart');
             return {success: true};
         }catch(error){
+            console.error('Cart error:', error.response?.data); // Debug log
             const message = error.response?.data?.error || 'Failed to add item to cart';
             toast.error(message);
             return {success: false, error: message};
         }
     },
     // Update Cart
+    // Update Cart
     updateCart: async (itemId, quantity) => {
         try {
-            const { data } = await cartAPI.updateCart(itemId, quantity);
+            const { data } = await cartAPI.updateCart(itemId, { quantity });
             set({ cart: data.cart });
             toast.success(data.message || 'Cart updated');
             return { success: true };
         } catch (error) {
-            const message = error.response?.data?.error || 'Failed to update cart';
+            const message = error.response?.data?.error || error.response?.data?.quantity?.[0] || 'Failed to update cart';
             toast.error(message);
             return { success: false, error: message };
         }
@@ -81,5 +89,5 @@ export const useCartStore = create((set, get) => ({
     totalPrice: () => get().cart?.total_price ?? 0,
     subtotal: () => get().cart?.subtotal ?? 0,
     cartItems: () => get().cart?.items ?? [],
-    isEmpty: () => get().totalItems === 0,
+    isEmpty: () => get().totalItems() === 0,
 }))

@@ -15,6 +15,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from decimal import Decimal
 from django.db.models import F
+from rest_framework.exceptions import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -245,16 +246,30 @@ class ProfileUpdateView(RetrieveUpdateAPIView):
 # Cart
 class CartView(ViewSet):
     permission_classes = [IsAuthenticated]
-    serializer_class = CartReadSerializer
     
-    def get_object(self):
-        cart,_ = Cart.objects.get_or_create(user=self.request.user)
-        return Cart.objects.prefetch_related("items__product").get(id=cart.id)
+    def get_cart(self):
+        cart, _ = Cart.objects.get_or_create(user=self.request.user)
+        return cart
 
     def list(self, request):
-        cart = self.get_object()
-        serializer = self.serializer_class(cart)
+        cart = self.get_cart()
+        serializer = CartReadSerializer(cart)
         return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        # Allow checking a specific cart item if needed, or just return the whole cart
+        return self.list(request)
+
+    def destroy(self, request, pk=None):
+        cart = self.get_cart()
+        item = get_object_or_404(CartItem, pk=pk, cart=cart)
+        item.delete()
+        
+        serializer = CartReadSerializer(cart)
+        return Response({
+            'message': 'Item removed from cart',
+            'cart': serializer.data
+        })
     
 
 class AddToCartView(APIView):
@@ -263,43 +278,58 @@ class AddToCartView(APIView):
     @transaction.atomic
     def post(self, request):
         serializer = AddToCartSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         
-        # Fetch product and cart
-        product = get_object_or_404(
-            Product.objects.select_for_update(),
-            id=serializer.validated_data["product_id"]
-        )
-        quantity = serializer.validated_data["quantity"]
-        cart, _ = Cart.objects.get_or_create(
-            user=request.user
-        )
-        
-        # Get or update the CartItem
-        cart_item, created = CartItem.objects.select_for_update().get_or_create(
-            cart=cart,
-            product=product,
-            defaults={'quantity':0}
-        )
-        
-        # calculate total potential quantity
-        current_qty = cart_item.quantity
-        total_requested_qty = current_qty + quantity
-        
-        # Stock validation
-        if total_requested_qty > product.stock:
-            raise ValidationError(
-                f"Insufficient stock. You have {current_qty}, adding {quantity} exceeds limit of {product.stock}."
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors, 
+                status=status.HTTP_400_BAD_REQUEST
             )
         
-        # save
-        cart_item.quantity = total_requested_qty
-        cart_item.save()
-        
-        return Response({
-            'message': 'Item added to cart.'
-        }, status=status.HTTP_201_CREATED)
-    
+        try:
+            # Fetch product and cart with row-level locking
+            product = get_object_or_404(
+                Product.objects.select_for_update(), 
+                id=serializer.validated_data["product_id"]
+            )
+            quantity = serializer.validated_data["quantity"]
+            cart, _ = Cart.objects.get_or_create(user=request.user)
+            
+            # Get or update the CartItem
+            cart_item, created = CartItem.objects.select_for_update().get_or_create(
+                cart=cart,
+                product=product,
+                defaults={'quantity': 0}
+            )
+            
+            # Calculate total potential quantity
+            current_qty = cart_item.quantity
+            total_requested_qty = current_qty + quantity
+            
+            # Stock validation
+            if total_requested_qty > product.stock:
+                return Response(
+                    {"error": f"Insufficient stock. You have {current_qty}, adding {quantity} exceeds limit of {product.stock}."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Save
+            cart_item.quantity = total_requested_qty
+            cart_item.save()
+            
+            return Response({
+                'message': 'Item added to cart.'
+            }, status=status.HTTP_201_CREATED)
+            
+        except Product.DoesNotExist:
+            return Response(
+                {"error": "Product not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )    
 
 class UpdateCartItemView(RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
@@ -307,7 +337,17 @@ class UpdateCartItemView(RetrieveUpdateAPIView):
     
     def get_queryset(self):
         return CartItem.objects.filter(cart__user=self.request.user)
-    
+
+    def patch(self, request, *args, **kwargs):
+        response = super().patch(request, *args, **kwargs)
+        cart = Cart.objects.get(user=self.request.user)
+        return Response({
+            'message': 'Quantity updated',
+            'cart': CartReadSerializer(cart).data
+        }, status=status.HTTP_200_OK)
+
+    def put(self, request, *args, **kwargs):
+        return self.patch(request, *args, **kwargs)
 
 class ClearCartView(APIView):
     permission_classes = [IsAuthenticated]
@@ -382,21 +422,16 @@ class CheckoutView(APIView):
 
     @transaction.atomic
     def post(self, request):
-
         serializer = CheckoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         address_id = serializer.validated_data["address_id"]
         notes = serializer.validated_data.get("notes", "")
 
-        # Address validation
-        address = get_object_or_404(
-            Address,
-            id=address_id,
-            user=request.user
-        )
+        # 1. Validate Address
+        address = get_object_or_404(Address, id=address_id, user=request.user)
 
-        #  Lock cart
+        # 2. Lock and Fetch Cart
         cart = (
             Cart.objects
             .select_for_update()
@@ -407,70 +442,67 @@ class CheckoutView(APIView):
 
         if not cart or not cart.items.exists():
             return Response(
-                {"error": "Your cart is empty."},
+                {"error": "Your cart is empty. Add some items before checking out."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         cart_items = cart.items.all()
+        order_items_data = []
+        products_to_update = []
 
-        products = []
-
+        # 3. Stock Check and Data Preparation
         for item in cart_items:
             product = item.product
-
+            
             if product.stock < item.quantity:
                 return Response(
-                    {
-                        "error": f'Not enough stock for "{product.name}". Only {product.stock} left.'
-                    },
+                    {"error": f'"{product.name}" is now out of stock (Only {product.stock} available).'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            products.append(product)
+            # Calculate item total based on current price
+            unit_price = product.discounted_price or product.price
+            
+            order_items_data.append({
+                'product': product,
+                'product_name': product.name,
+                'product_image': product.image if product.image else None,
+                'unit_price': unit_price,
+                'quantity': item.quantity,
+            })
+            
+            # Prepare for stock reduction
+            product.stock -= item.quantity
+            products_to_update.append(product)
 
-        #
-        subtotal = sum(
-            Decimal(item.item_total) for item in cart_items
-        )
-
-        tax = (subtotal * TAX_RATE).quantize(Decimal("0.01"))
+        # 4. Financial Calculations
+        subtotal = sum(Decimal(item['unit_price']) * item['quantity'] for item in order_items_data)
+        tax = (subtotal * Decimal("0.10")).quantize(Decimal("0.01")) # Simplified TAX_RATE for example
         total = subtotal + tax
 
-        # Create Order
+        # 5. Create Order
         order = Order.objects.create(
             user=request.user,
-            shipping_address=address,
+            shipped_address=address,
             subtotal=subtotal,
             tax=tax,
             total=total,
             notes=notes,
             status="pending",
-            payment_status="pending",
+            payment_status="unpaid",
         )
 
-        #  create OrderItems
+        # 6. Bulk Create Order Items
         order_items = [
-            OrderItem(
-                order=order,
-                product=item.product,
-                product_name=item.product.name,
-                product_image=item.product.image,
-                unit_price=item.product.discounted_price,
-                quantity=item.quantity,
-            )
-            for item in cart_items
+            OrderItem(order=order, **data) for data in order_items_data
         ]
-
         OrderItem.objects.bulk_create(order_items)
 
-        #  Reduce stock efficiently
-        for product, item in zip(products, cart_items):
-            product.stock -= item.quantity
-        
-        # to improve performance and reduce db hits using bulk_update
-        Product.objects.bulk_update(products, ["stock"])
+        # 7. Efficient Stock Update
+        # Using bulk_update ensures only one query for all stock changes
+        Product.objects.bulk_update(products_to_update, ["stock"])
 
-        #  Clear cart
+        # 8. Clear Cart Items
         cart.items.all().delete()
 
         return Response(
@@ -490,7 +522,7 @@ class OrderViewSet(ReadOnlyModelViewSet):
         return Order.objects.filter(
             user=self.request.user
         ).select_related(
-            'shipping_address'
+            'shipped_address'
         ).prefetch_related('items__product')
     
     def get_serializer_class(self):

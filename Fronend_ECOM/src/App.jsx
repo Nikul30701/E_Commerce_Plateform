@@ -11,6 +11,10 @@ import Cart from './pages/Cart'
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/useAuthStore';
 import { useEffect } from 'react';
+import { OrderDetail } from './pages/Orders';
+import { OrdersList } from './pages/Orders';
+import Checkout from './pages/Checkout';
+import Addresses from './pages/Addresses'
 
 
 const App = () => {
@@ -19,6 +23,7 @@ const App = () => {
   useEffect(() => {
       initAuth();
   }, []);
+
   return (
     <div className="min-h-screen bg-gray-50"> 
       <Navbar />
@@ -30,6 +35,10 @@ const App = () => {
         <Route path='/products' element={<Products />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path='/cart' element={<Cart />} />
+        <Route path='/checkout' element={<Checkout />} />
+        <Route path='/orders' element={<OrdersList />} />
+        <Route path='/orders/:id' element={<OrderDetail />} />
+        <Route path='/addresses' element={<Addresses />}/>
       </Routes>
       <Toaster
             position="top-right"

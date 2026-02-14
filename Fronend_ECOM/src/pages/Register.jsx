@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart, AlertCircle, X, Eye, EyeOff } from 'lucide-react';
+import { ShoppingCart, AlertCircle, X, Eye, EyeOff } from 'lucide-react'; // Added Eye icons
 
 const Register = () => {
     const { register } = useAuthStore();
@@ -12,8 +12,6 @@ const Register = () => {
         first_name: '',
         last_name: '',
         phone: '',
-        gender: 'M',  // Added with default
-        dob: '',      // Added
         password: '',
         confirm_password: '',
         profile_pic: null,
@@ -23,6 +21,7 @@ const Register = () => {
     const [error, setError] = useState('');
     const [previewUrl, setPreviewUrl] = useState(null);
     
+    // Logic for toggling visibility
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -50,7 +49,7 @@ const Register = () => {
 
         const data = new FormData();
         Object.keys(formData).forEach(key => {
-            if(formData[key] !== null && formData[key] !== ''){
+            if(formData[key] !== null){
                 data.append(key, formData[key]);
             }
         });
@@ -59,8 +58,6 @@ const Register = () => {
         const result = await register(data);
         if (!result.success) {
             setError(result.error);
-        } else {
-            navigate('/');  // Redirect on success
         }
         setLoading(false);
     };
@@ -99,7 +96,7 @@ const Register = () => {
                         <div className='grid grid-cols-2 gap-4'>
                             <div>
                                 <label className='block text-sm font-medium text-gray-700 mb-1'>First Name</label>
-                                <input name="first_name" type="text" required value={formData.first_name} onChange={handleChange} placeholder='John' autoComplete='username' className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 outline-none' />
+                                <input name="first_name" type="text" required value={formData.first_name} onChange={handleChange} placeholder='John' className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 outline-none' />
                             </div>
                             <div>
                                 <label className='block text-sm font-medium text-gray-700 mb-1'>Last Name</label>
@@ -117,22 +114,6 @@ const Register = () => {
                             <input name="email" type="email" required value={formData.email} onChange={handleChange} placeholder='your@gmail.com' className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 outline-none' />
                         </div>
 
-                        {/* Gender and DOB Fields */}
-                        <div className='grid grid-cols-2 gap-4'>
-                            <div>
-                                <label className='block text-sm font-medium text-gray-700 mb-1'>Gender</label>
-                                <select name="gender" value={formData.gender} onChange={handleChange} className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 outline-none'>
-                                    <option value="M">Male</option>
-                                    <option value="F">Female</option>
-                                    <option value="O">Other</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className='block text-sm font-medium text-gray-700 mb-1'>Date of Birth</label>
-                                <input name="dob" type="date" value={formData.dob} onChange={handleChange} className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 outline-none' />
-                            </div>
-                        </div>
-
                         <div>
                             <label className='block text-sm font-medium text-gray-700 mb-1'>Profile Picture</label>
                             <input name="profile_pic" type="file" accept="image/*" onChange={handleImage} className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-stone-500 outline-none' />
@@ -146,7 +127,7 @@ const Register = () => {
                             )}
                         </div>
 
-                        {/* PASSWORD SECTION */}
+                        {/* PASSWORD */}
                         <div className='space-y-4'>
                             <div>
                                 <label className='block text-sm font-medium text-gray-700 mb-1'>Password</label>
@@ -192,6 +173,7 @@ const Register = () => {
                                 </div>
                             </div>
                         </div>
+                        {/* PASSWORD END */}
 
                         <button
                             type='submit'

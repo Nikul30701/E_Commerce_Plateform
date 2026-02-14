@@ -31,13 +31,13 @@ const Navbar = () => {
                         </span>
                     </Link>
 
-                    {/* Search Bar - Modern Pill Shape */}
+                    {/* Search Bar */}
                     <div className='hidden md:flex flex-1 max-w-lg mx-8'>
                         <div className='relative w-full group'>
                             <input 
                                 type="text"
                                 placeholder='Search for products...'
-                                className='w-full pl-11 pr-4 py-2.5 bg-gray-100 border-transparent text-gray-700 rounded-full focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-300'
+                                className='w-full pl-11 pr-4 py-2.5 bg-gray-100 border-transparent text-gray-700 rounded-full focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-500/50 focus:stone-amber-500 transition-all duration-300'
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && e.target.value.trim()) {
                                         navigate(`/products?search=${e.target.value.trim()}`);

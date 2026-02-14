@@ -20,7 +20,6 @@ api.interceptors.request.use(
             config.headers.Authorization = `Bearer ${token}`
         }
 
-        // If sending FormData, remove Content-Type so browser sets it
         // automatically to multipart/form-data with the correct boundary
         if (config.data instanceof FormData) {
             delete config.headers['Content-Type'];
@@ -44,7 +43,7 @@ api.interceptors.response.use(
             const refreshToken = localStorage.getItem('refresh_token');
             if (refreshToken) {
                 try {
-                    const { data } = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
+                    const { data } = await axios.post(`${API_BASE_URL.replace('/api', '')}/auth/token/refresh`, {
                         refresh: refreshToken
                     });
                     localStorage.setItem('access_token', data.access);
@@ -72,7 +71,7 @@ export default api;
 export const authAPI = {
     register: (data) => api.post('/register/', data),
     login: (data) => api.post('/login/', data),
-    logout: () => api.post('/logout/'),
+    logout: (refreshToken) => api.post('/logout/', { refresh: refreshToken }),
     getProfile: () => api.get('/profile/'),
     updateProfile: (data) => api.patch('/profile/update', data),
     changePassword: (data) => api.post('/change-password/', data),
@@ -100,20 +99,20 @@ export const categoryAPI = {
 }
 
 // Cart API
+// Cart API
 export const cartAPI = {
     getCart: () => api.get('/cart/'),
-    addToCart: (data) => api.post('/cart/add', data),
-    updateCart: (id, data) => api.put(`/cart/${id}/`, data),
+    addToCart: (data) => api.post('/cart/add/', data),  // ← Add trailing slash
+    updateCart: (id, data) => api.patch(`/cart/update/${id}/`, data),
     deleteCart: (id) => api.delete(`/cart/${id}/`),
-    clearCart: () => api.delete('/cart/clear'),
+    clearCart: () => api.delete('/cart/clear/'),  // ← Add trailing slash
 }
-
 // Order API
 export const orderAPI = {
     getAllOrders: () => api.get('/orders/'),
     getById: (id) => api.get(`/orders/${id}/`),
-    checkout: (data) => api.post('/orders/checkout', data),
-    cancel: (id) => api.put(`/orders/${id}/cancel`),
+    checkout: (data) => api.post('/checkout/', data),
+    cancelOrder: (id) => api.post(`/orders/${id}/cancel/`),
     updateStatus: (id, data) => api.put(`/orders/${id}/status`, data),  
 }
 
@@ -121,8 +120,8 @@ export const orderAPI = {
 export const addressAPI = {
     getAllAddresses: () => api.get('/addresses/'),
     getById: (id) => api.get(`/addresses/${id}/`),
-    createAddress: (data) => api.post('/addresses/create', data),
+    createAddress: (data) => api.post('/addresses/', data),
     updateAddress: (id, data) => api.put(`/addresses/${id}/`, data),
     deleteAddress: (id) => api.delete(`/addresses/${id}/`),
-    setDefaultAddress: (id) => api.put(`/addresses/${id}/set-default/`),
+    setDefaultAddress: (id) => api.post(`/addresses/${id}/set-default/`),
 }

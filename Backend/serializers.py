@@ -252,11 +252,11 @@ class AddressSerializer(serializers.ModelSerializer):
         
         
 class OrderItemSerializer(serializers.ModelSerializer):
-    items_total = serializers.DecimalField(decimal_places=2, max_digits=7, read_only=True)
+    item_total = serializers.DecimalField(decimal_places=2, max_digits=7, read_only=True)
     
     class Meta:
         model = OrderItem
-        fields = ['id', 'product_name', 'product_image', 'unit_price', 'quantity' , 'items_total']
+        fields = ['id', 'product_name', 'product_image', 'unit_price', 'quantity' , 'item_total']
         
     
 class OrderListSerializer(serializers.ModelSerializer):
@@ -277,19 +277,19 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'shipped_address', 'status', 'payment_status', 'subtotal', 'tax', 'total',
+        fields = ['id', 'order_number', 'items', 'shipped_address', 'status', 'payment_status', 'subtotal', 'tax', 'total',
                   'notes', 'created_at', 'updated_at']
     
-    def get_shipping_address(self, obj):
-        if obj.shipping_address:
-            addr = obj.shipping_address
+    def get_shipped_address(self, obj):
+        if obj.shipped_address:
+            addr = obj.shipped_address
             return {
                 'fullname': addr.fullname,
                 'street': addr.street,
                 'city': addr.city,
                 'zipcode': addr.zipcode,
                 'country': addr.country,
-                'phone':addr.phone
+                'phone': addr.phone
             }
         return None
 
