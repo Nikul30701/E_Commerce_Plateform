@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Agale';
+  src: url('./assets/agale/Agale.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Tailwind v4 way */
+@theme {
+  --font-agale: 'Agale', sans-serif;
+}

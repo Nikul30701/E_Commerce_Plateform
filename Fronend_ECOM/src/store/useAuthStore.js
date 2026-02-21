@@ -1,0 +1,166 @@
+import { create } from 'zustand';
+import { authAPI } from '../services/api';
+import toast from 'react-hot-toast';
+
+export const useAuthStore = create((set, get) => ({
+    user: null,
+    loading: true,
+    error: null,
+    isAuthenticated: false,
+
+    // 1. App start hote hi user check karna
+    initAuth: async () => {
+        const token = localStorage.getItem("access_token");
+
+        if (!token) {
+            set({ user: null, loading: false, isAuthenticated: false });
+            return;
+        }
+
+        try {
+            const res = await authAPI.getProfile();
+
+            set({
+                user: res.data,
+                isAuthenticated: true,
+                loading: false
+            });
+
+        } catch (error) {
+
+            // token invalid ho sakta hai
+            localStorage.removeItem("access_token", error);
+            localStorage.removeItem("refresh_token", error);
+
+            set({
+                user: null,
+                isAuthenticated: false,
+                loading: false
+            });
+        }
+    },
+
+    // 2. User fetch karna
+    fetchUser: async () => {
+        set({ loading: true });
+        try {
+            const { data } = await authAPI.getProfile();
+            set({ user: data });
+        } catch (error) {
+            console.error("Session invalid:", error);
+            get().logout(false); // False matlab API call mat karo, bas cleanup karo
+        } finally {
+            set({ loading: false });
+        }
+    },
+
+    // 3. Login
+    login: async (credentials) => {
+        set({ loading: true, error: null });
+        try {
+            const { data } = await authAPI.login(credentials);
+            
+            // Storage update
+            localStorage.setItem('access_token', data.tokens.access);
+            localStorage.setItem('refresh_token', data.tokens.refresh);
+            
+            // State update
+            set({ 
+                user: data.user, 
+                isAuthenticated: true,
+                loading: false,
+                error: null
+            });
+            toast.success('Welcome back!');
+            return { success: true };
+        } catch (error) {
+            const message = error.response?.data?.error || 'Invalid email or password';
+            set({ 
+                loading: false,
+                error: message,
+                user:null
+            });
+            toast.error(message);
+            return { success: false, error: message };
+        }
+    },
+
+    // 4. Register (Cleanup included)
+    register: async (credentials) => {
+        set({ loading: true, error: null });
+        try {
+            const { data } = await authAPI.register(credentials);
+            
+            localStorage.setItem('access_token', data.tokens.access);
+            localStorage.setItem('refresh_token', data.tokens.refresh);
+            
+            set({ user: data.user, isAuthenticated: true, loading: false });
+            toast.success('Account created! 🎉');
+            return { success: true };
+        } catch (error) {
+            let message = 'Registration Failed';
+            
+            if (error.response?.data) {
+                // Check if it's our custom error format { error: "Login failed" }
+                if (error.response.data.error) {
+                    message = error.response.data.error;
+                } 
+                // Check if it's DRF validation error format { field: ["Error 1"] }
+                else if (typeof error.response.data === 'object') {
+                    const firstError = Object.values(error.response.data).flat()[0];
+                    if (firstError) message = firstError;
+                }
+            }
+            
+            set({ loading: false, error: message });
+            toast.error(message);
+            return { success: false, error: message };
+        }
+    },
+
+    // 5. Unified Logout (Sab kuch ek jagah)
+    logout: async (callApi = true) => {
+        set({ loading: true });
+        
+        if (callApi) {
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (refreshToken) {
+                try {
+                    await authAPI.logout(refreshToken);
+                } catch (err) {
+                    console.warn("Logout API failed (token might be expired already)");
+                    console.log(err);
+                    
+                }
+            }
+        }
+
+        // Cleanup: Tokens hatao, State null karo
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        
+        set({ user: null, isAuthenticated: false, error: null, loading: false });
+        
+        if (callApi) toast.success('Logged out successfully');
+
+        useCartStore.getState().resetCart()
+
+        
+        // Note: Redirect component level pe handle karein (e.g., using useEffect on user state)
+        // ya phir router object pass karein.
+    },
+
+    // 6. Update Profile (Variable naming fix)
+    updateProfile: async (updateData) => {
+        try {
+            const { data } = await authAPI.updateProfile(updateData);
+            set({ user: data }); // State update taaki UI refresh ho jaye
+            toast.success('Profile updated');
+            return { success: true };
+        } catch (error) {
+            const message = error.response?.data?.error || 'Update failed';
+            toast.error(message);
+            return { success: false, error: message };
+        }
+    }
+}));

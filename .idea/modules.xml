@@ -2,7 +2,11 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+<<<<<<< HEAD
       <module fileurl="file://$PROJECT_DIR$/.idea/Django_React.iml" filepath="$PROJECT_DIR$/.idea/Django_React.iml" />
+=======
+      <module fileurl="file://$PROJECT_DIR$/.idea/E-Commerce_Platform.iml" filepath="$PROJECT_DIR$/.idea/E-Commerce_Platform.iml" />
+>>>>>>> 6b41c80adcfa816e68ec50f4aedde52e50bf795a
     </modules>
   </component>
 </project>
