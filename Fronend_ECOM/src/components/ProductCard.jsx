@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 import { ShoppingBag, Plus } from 'lucide-react'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = 'http://localhost:8000/api'
 
 const ProductCard = ({ product }) => {
     const { addToCart } = useCartStore()
