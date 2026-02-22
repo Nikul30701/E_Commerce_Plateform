@@ -82,9 +82,11 @@ WSGI_APPLICATION = 'Ecommerce.wsgi.application'
 
 import dj_database_url
 
+import dj_database_url
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default=f"postgres://{config('DB_USER')}:{config('DB_PASSWORD')}@{config('DB_HOST')}:{config('DB_PORT')}/{config('DB_NAME')}"),
+        default=config('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True,
     )
