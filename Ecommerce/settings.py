@@ -171,3 +171,6 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://web-production-1c1e5.up.railway.app",
+]
