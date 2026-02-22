@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const Checkout = () => {
     const navigate = useNavigate()

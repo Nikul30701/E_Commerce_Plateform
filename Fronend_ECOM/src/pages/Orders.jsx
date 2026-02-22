@@ -4,7 +4,7 @@ import { Package, MapPin, ArrowLeft, ChevronRight, Clock, CheckCircle2 } from 'l
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const STATUS_CONFIG = {
     pending: { color: 'text-amber-600 bg-amber-50 border-amber-100', icon: Clock, label: 'Pending' },
